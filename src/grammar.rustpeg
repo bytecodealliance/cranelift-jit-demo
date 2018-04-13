@@ -62,5 +62,6 @@ identifier -> String
 
 literal -> Expr
     = n:$([0-9]+) { Expr::Literal(n.to_owned()) }
+    / "&" i:identifier { Expr::GlobalDataAddr(i) }
 
 _ = [ \t]*

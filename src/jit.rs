@@ -6,8 +6,9 @@ use cretonne::ir::types;
 use cretonne::ir::condcodes::IntCC;
 use cretonne;
 use cton_frontend::{FunctionBuilderContext, FunctionBuilder, Variable};
-use cton_module::{Module, Linkage};
+use cton_module::{Module, Linkage, DataContext, Writability};
 use cton_simplejit::SimpleJITBackend;
+use std::slice;
 
 /// The AST node for expressions.
 pub enum Expr {
@@ -27,6 +28,7 @@ pub enum Expr {
     IfElse(Box<Expr>, Vec<Expr>, Vec<Expr>),
     WhileLoop(Box<Expr>, Vec<Expr>),
     Call(String, Vec<Expr>),
+    GlobalDataAddr(String),
 }
 
 /// Include the parser code, generated from grammar.rustpeg.
@@ -43,6 +45,9 @@ pub struct JIT {
     /// The main Cretonne context, which holds the state for codegen.
     ctx: cretonne::Context,
 
+    /// The data context, which is to data objects what `ctx` is to functions.
+    data_ctx: DataContext,
+
     /// The module, with the simplejit backend, which manages the JIT'd
     /// functions.
     module: Module<SimpleJITBackend>,
@@ -51,10 +56,16 @@ pub struct JIT {
 impl JIT {
     /// Create a new `JIT` instance.
     pub fn new() -> Self {
+        // Windows calling conventions are not supported yet.
+        if cfg!(windows) {
+            unimplemented!();
+        }
+
         let backend = SimpleJITBackend::new();
         Self {
             builder_context: FunctionBuilderContext::<Variable>::new(),
             ctx: cretonne::Context::new(),
+            data_ctx: DataContext::new(),
             module: Module::new(backend),
         }
     }
@@ -101,6 +112,27 @@ impl JIT {
         Ok(code)
     }
 
+    /// Create a zero-initialized data section.
+    pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<&[u8], String> {
+        // The steps here are analogous to `compile`, except that data is much
+        // simpler than functions.
+        self.data_ctx.define(
+            contents.into_boxed_slice(),
+            Writability::Writable,
+        );
+        let id = self.module
+            .declare_data(name, Linkage::Export, true)
+            .map_err(|e| e.to_string())?;
+
+        self.module.define_data(id, &self.data_ctx).map_err(
+            |e| e.to_string(),
+        )?;
+        self.data_ctx.clear();
+        let buffer = self.module.finalize_data(id);
+        // TODO: Can we move the unsafe into cretonne?
+        Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
+    }
+
     // Translate from toy-language AST nodes into Cretonne IR.
     fn translate(
         &mut self,
@@ -108,19 +140,17 @@ impl JIT {
         the_return: String,
         stmts: Vec<Expr>,
     ) -> Result<(), String> {
-        // Our toy language currently only supports I32 values, though Cretonne
+        let int = self.module.pointer_type();
+
+        // Our toy language currently only supports I64 values, though Cretonne
         // supports other types.
         for _p in &params {
-            self.ctx.func.signature.params.push(
-                AbiParam::new(types::I32),
-            );
+            self.ctx.func.signature.params.push(AbiParam::new(int));
         }
 
         // Our toy language currently only supports one return value, though
         // Cretonne is designed to support more.
-        self.ctx.func.signature.returns.push(
-            AbiParam::new(types::I32),
-        );
+        self.ctx.func.signature.returns.push(AbiParam::new(int));
 
         // Create the builder to builder a function.
         let mut builder =
@@ -145,10 +175,12 @@ impl JIT {
 
         // The toy language allows variables to be declared implicitly.
         // Walk the AST and declare all implicitly-declared variables.
-        let variables = declare_variables(&mut builder, &params, &the_return, &stmts, entry_ebb);
+        let variables =
+            declare_variables(int, &mut builder, &params, &the_return, &stmts, entry_ebb);
 
         // Now translate the statements of the function body.
         let mut trans = FunctionTranslator {
+            int,
             builder,
             variables,
             module: &mut self.module,
@@ -175,6 +207,7 @@ impl JIT {
 /// A collection of state used for translating from toy-language AST nodes
 /// into Cretonne IR.
 struct FunctionTranslator<'a> {
+    int: types::Type,
     builder: FunctionBuilder<'a, Variable>,
     variables: HashMap<String, Variable>,
     module: &'a mut Module<SimpleJITBackend>,
@@ -187,7 +220,7 @@ impl<'a> FunctionTranslator<'a> {
         match expr {
             Expr::Literal(literal) => {
                 let imm: i32 = literal.parse().unwrap();
-                self.builder.ins().iconst(types::I32, i64::from(imm))
+                self.builder.ins().iconst(self.int, i64::from(imm))
             }
 
             Expr::Add(lhs, rhs) => {
@@ -218,21 +251,21 @@ impl<'a> FunctionTranslator<'a> {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
                 let c = self.builder.ins().icmp(IntCC::Equal, lhs, rhs);
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Ne(lhs, rhs) => {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
                 let c = self.builder.ins().icmp(IntCC::NotEqual, lhs, rhs);
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Lt(lhs, rhs) => {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
                 let c = self.builder.ins().icmp(IntCC::SignedLessThan, lhs, rhs);
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Le(lhs, rhs) => {
@@ -243,14 +276,14 @@ impl<'a> FunctionTranslator<'a> {
                     lhs,
                     rhs,
                 );
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Gt(lhs, rhs) => {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
                 let c = self.builder.ins().icmp(IntCC::SignedGreaterThan, lhs, rhs);
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Ge(lhs, rhs) => {
@@ -261,14 +294,16 @@ impl<'a> FunctionTranslator<'a> {
                     lhs,
                     rhs,
                 );
-                self.builder.ins().bint(types::I32, c)
+                self.builder.ins().bint(self.int, c)
             }
 
             Expr::Call(name, args) => self.translate_call(name, args),
 
+            Expr::GlobalDataAddr(name) => self.translate_global_data_addr(name),
+
             Expr::Identifier(name) => {
                 // `use_var` is used to read the value of a variable.
-                let variable = self.variables.get(&name).unwrap();
+                let variable = self.variables.get(&name).expect("variable not defined");
                 self.builder.use_var(*variable)
             }
 
@@ -293,12 +328,12 @@ impl<'a> FunctionTranslator<'a> {
                 // the then and else bodies. Cretonne uses block parameters,
                 // so set up a parameter in the merge block, and we'll pass
                 // the return values to it from the branches.
-                self.builder.append_ebb_param(merge_block, types::I32);
+                self.builder.append_ebb_param(merge_block, self.int);
 
                 // Test the if condition and conditionally branch.
                 self.builder.ins().brz(condition_value, else_block, &[]);
 
-                let mut then_return = self.builder.ins().iconst(types::I32, 0);
+                let mut then_return = self.builder.ins().iconst(self.int, 0);
                 for expr in then_body {
                     then_return = self.translate_expr(expr);
                 }
@@ -308,7 +343,7 @@ impl<'a> FunctionTranslator<'a> {
 
                 self.builder.switch_to_block(else_block);
                 self.builder.seal_block(else_block);
-                let mut else_return = self.builder.ins().iconst(types::I32, 0);
+                let mut else_return = self.builder.ins().iconst(self.int, 0);
                 for expr in else_body {
                     else_return = self.translate_expr(expr);
                 }
@@ -351,7 +386,7 @@ impl<'a> FunctionTranslator<'a> {
                 self.builder.seal_block(exit_block);
 
                 // Just return 0 for now.
-                self.builder.ins().iconst(types::I32, 0)
+                self.builder.ins().iconst(self.int, 0)
             }
         }
     }
@@ -361,11 +396,11 @@ impl<'a> FunctionTranslator<'a> {
 
         // Add a parameter for each argument.
         for _arg in &args {
-            sig.params.push(AbiParam::new(types::I32));
+            sig.params.push(AbiParam::new(self.int));
         }
 
-        // For simplicity for now, just make all calls return a single I32.
-        sig.returns.push(AbiParam::new(types::I32));
+        // For simplicity for now, just make all calls return a single I64.
+        sig.returns.push(AbiParam::new(self.int));
 
         // TODO: Streamline the API here?
         let callee = self.module
@@ -383,9 +418,23 @@ impl<'a> FunctionTranslator<'a> {
         let call = self.builder.ins().call(local_callee, &arg_values);
         self.builder.inst_results(call)[0]
     }
+
+    fn translate_global_data_addr(&mut self, name: String) -> Value {
+        let sym = self.module
+            .declare_data(&name, Linkage::Export, true)
+            .expect("problem declaring data object");
+        let local_id = self.module.declare_data_in_func(
+            sym,
+            &mut self.builder.func,
+        );
+
+        let pointer = self.module.pointer_type();
+        self.builder.ins().globalsym_addr(pointer, local_id)
+    }
 }
 
 fn declare_variables(
+    int: types::Type,
     builder: &mut FunctionBuilder<Variable>,
     params: &[String],
     the_return: &str,
@@ -399,14 +448,14 @@ fn declare_variables(
         // TODO: cton_frontend should really have an API to make it easy to set
         // up param variables.
         let val = builder.ebb_params(entry_ebb)[i];
-        let var = declare_variable(builder, &mut variables, &mut index, name);
+        let var = declare_variable(int, builder, &mut variables, &mut index, name);
         builder.def_var(var, val);
     }
-    let zero = builder.ins().iconst(types::I32, 0);
-    let return_variable = declare_variable(builder, &mut variables, &mut index, the_return);
+    let zero = builder.ins().iconst(int, 0);
+    let return_variable = declare_variable(int, builder, &mut variables, &mut index, the_return);
     builder.def_var(return_variable, zero);
     for expr in stmts {
-        declare_variables_in_stmt(builder, &mut variables, &mut index, expr);
+        declare_variables_in_stmt(int, builder, &mut variables, &mut index, expr);
     }
 
     variables
@@ -415,6 +464,7 @@ fn declare_variables(
 /// Recursively descend through the AST, translating all implicit
 /// variable declarations.
 fn declare_variables_in_stmt(
+    int: types::Type,
     builder: &mut FunctionBuilder<Variable>,
     variables: &mut HashMap<String, Variable>,
     index: &mut usize,
@@ -422,19 +472,19 @@ fn declare_variables_in_stmt(
 ) {
     match *expr {
         Expr::Assign(ref name, _) => {
-            declare_variable(builder, variables, index, name);
+            declare_variable(int, builder, variables, index, name);
         }
         Expr::IfElse(ref _condition, ref then_body, ref else_body) => {
             for stmt in then_body {
-                declare_variables_in_stmt(builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, &stmt);
             }
             for stmt in else_body {
-                declare_variables_in_stmt(builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, &stmt);
             }
         }
         Expr::WhileLoop(ref _condition, ref loop_body) => {
             for stmt in loop_body {
-                declare_variables_in_stmt(builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, &stmt);
             }
         }
         _ => (),
@@ -442,6 +492,7 @@ fn declare_variables_in_stmt(
 }
 
 fn declare_variable(
+    int: types::Type,
     builder: &mut FunctionBuilder<Variable>,
     variables: &mut HashMap<String, Variable>,
     index: &mut usize,
@@ -450,7 +501,7 @@ fn declare_variable(
     let var = Variable::new(*index);
     if !variables.contains_key(name) {
         variables.insert(name.into(), var);
-        builder.declare_var(var, types::I32);
+        builder.declare_var(var, int);
         *index += 1;
     }
     var

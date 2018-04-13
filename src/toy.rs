@@ -44,7 +44,7 @@ fn main() {
     // is safe to be called.
     //
     // TODO: Is there a way to fold this transmute into `compile` above?
-    let foo = unsafe { mem::transmute::<_, fn(i32, i32) -> i32>(foo) };
+    let foo = unsafe { mem::transmute::<_, fn(isize, isize) -> isize>(foo) };
 
     // And now we can call it!
     println!("the answer is: {}", foo(1, 0));
@@ -72,7 +72,7 @@ fn main() {
         eprintln!("error: {}", msg);
         process::exit(1);
     });
-    let recursive_fib = unsafe { mem::transmute::<_, fn(i32) -> i32>(recursive_fib) };
+    let recursive_fib = unsafe { mem::transmute::<_, fn(isize) -> isize>(recursive_fib) };
 
     // And we can now call it!
     println!("recursive_fib(10) = {}", recursive_fib(10));
@@ -104,8 +104,35 @@ fn main() {
         eprintln!("error: {}", msg);
         process::exit(1);
     });
-    let iterative_fib = unsafe { mem::transmute::<_, fn(i32) -> i32>(iterative_fib) };
+    let iterative_fib = unsafe { mem::transmute::<_, fn(isize) -> isize>(iterative_fib) };
 
     // And we can now call it!
     println!("iterative_fib(10) = {}", iterative_fib(10));
+
+
+    // -------------------------------------------------------------------------//
+
+    // Let's say hello, by calling into libc. The puts function is resolved by
+    // dlsym to the libc function, and the string &hello_string is defined below.
+    let hello_code = "\
+        fn hello() -> (r) {                                               \n\
+            puts(&hello_string)                                           \n\
+        }                                                                 \n\
+    ";
+
+    jit.create_data("hello_string", "hello world\0".as_bytes().to_vec())
+        .unwrap_or_else(|msg| {
+            eprintln!("error: {}", msg);
+            process::exit(1);
+        });
+
+    // Same as above.
+    let hello = jit.compile(&hello_code).unwrap_or_else(|msg| {
+        eprintln!("error: {}", msg);
+        process::exit(1);
+    });
+    let hello = unsafe { mem::transmute::<_, fn() -> isize>(hello) };
+
+    // And we can now call it!
+    hello();
 }
