@@ -42,7 +42,9 @@ pub struct JIT {
     /// FunctionBuilder instances.
     builder_context: FunctionBuilderContext<Variable>,
 
-    /// The main Cretonne context, which holds the state for codegen.
+    /// The main Cretonne context, which holds the state for codegen. Cretonne
+    /// separates this from `Module` to allow for parallel compilation, with a
+    /// context per thread, though this isn't in the simple demo here.
     ctx: cretonne::Context,
 
     /// The data context, which is to data objects what `ctx` is to functions.
