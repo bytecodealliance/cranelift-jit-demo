@@ -140,10 +140,10 @@ impl JIT {
         the_return: String,
         stmts: Vec<Expr>,
     ) -> Result<(), String> {
-        let int = self.module.pointer_type();
-
         // Our toy language currently only supports I64 values, though Cretonne
         // supports other types.
+        let int = self.module.pointer_type();
+
         for _p in &params {
             self.ctx.func.signature.params.push(AbiParam::new(int));
         }
