@@ -491,6 +491,7 @@ fn declare_variables_in_stmt(
     }
 }
 
+/// Declare a single variable declaration.
 fn declare_variable(
     int: types::Type,
     builder: &mut FunctionBuilder<Variable>,
