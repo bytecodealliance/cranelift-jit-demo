@@ -404,7 +404,7 @@ impl<'a> FunctionTranslator<'a> {
 
         // TODO: Streamline the API here?
         let callee = self.module
-            .declare_function(&name, Linkage::Export, &sig)
+            .declare_function(&name, Linkage::Import, &sig)
             .expect("problem declaring function");
         let local_callee = self.module.declare_func_in_func(
             callee,
