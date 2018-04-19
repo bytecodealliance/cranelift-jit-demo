@@ -14,7 +14,8 @@ path = "src/toy.rs"
 [dependencies]
 cranelift = "0.25.0"
 cranelift-module = "0.25.0"
-cranelift-simplejit = "0.25.0"
+cranelift-faerie = "0.25.0"
+target-lexicon = "0.2.0"
 peg = "0.5.4"
 
 [build-dependencies]
