@@ -9,10 +9,9 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cretonne = { git = "https://github.com/sunfishcode/cretonne", branch = "module" }
-cretonne-frontend = { git = "https://github.com/sunfishcode/cretonne", branch = "module" }
-cretonne-module = { git = "https://github.com/sunfishcode/cretonne", branch = "module" }
-cretonne-simplejit = { git = "https://github.com/sunfishcode/cretonne", branch = "module" }
+cretonne = { git = "https://github.com/cretonne/cretonne" }
+cretonne-module = { git = "https://github.com/cretonne/cretonne" }
+cretonne-simplejit = { git = "https://github.com/cretonne/cretonne" }
 peg = "0.5.4"
 
 [build-dependencies]

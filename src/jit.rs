@@ -1,13 +1,8 @@
 use std::collections::HashMap;
 
-use cretonne::entity::EntityRef;
-use cretonne::ir::{AbiParam, InstBuilder, Value, Ebb, Signature, CallConv};
-use cretonne::ir::types;
-use cretonne::ir::condcodes::IntCC;
-use cretonne;
-use cton_frontend::{FunctionBuilderContext, FunctionBuilder, Variable};
-use cton_module::{Module, Linkage, DataContext, Writability};
-use cton_simplejit::SimpleJITBackend;
+use cretonne::prelude::*;
+use cretonne_module::{Module, Linkage, DataContext, Writability};
+use cretonne_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 use std::slice;
 
 /// The AST node for expressions.
@@ -45,7 +40,7 @@ pub struct JIT {
     /// The main Cretonne context, which holds the state for codegen. Cretonne
     /// separates this from `Module` to allow for parallel compilation, with a
     /// context per thread, though this isn't in the simple demo here.
-    ctx: cretonne::Context,
+    ctx: codegen::Context,
 
     /// The data context, which is to data objects what `ctx` is to functions.
     data_ctx: DataContext,
@@ -63,12 +58,12 @@ impl JIT {
             unimplemented!();
         }
 
-        let backend = SimpleJITBackend::new();
+        let builder = SimpleJITBuilder::new();
         Self {
             builder_context: FunctionBuilderContext::<Variable>::new(),
-            ctx: cretonne::Context::new(),
+            ctx: codegen::Context::new(),
             data_ctx: DataContext::new(),
-            module: Module::new(backend),
+            module: Module::new(builder),
         }
     }
 

@@ -1,7 +1,6 @@
 extern crate cretonne;
-extern crate cton_frontend;
-extern crate cton_module;
-extern crate cton_simplejit;
+extern crate cretonne_module;
+extern crate cretonne_simplejit;
 
 use std::process;
 use std::mem;
