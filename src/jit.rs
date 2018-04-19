@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
 use cranelift::prelude::*;
+use cranelift_faerie::{FaerieBackend, FaerieBuilder, FaerieTrapCollection};
 use cranelift_module::{DataContext, Linkage, Module};
-use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 use frontend::*;
-use std::slice;
+use std::fs::File;
+use std::str::FromStr;
+use target_lexicon;
 
 /// The basic JIT class.
 pub struct JIT {
@@ -22,18 +24,29 @@ pub struct JIT {
 
     /// The module, with the simplejit backend, which manages the JIT'd
     /// functions.
-    module: Module<SimpleJITBackend>,
+    module: Module<FaerieBackend>,
 }
 
 impl JIT {
     /// Create a new `JIT` instance.
-    pub fn new() -> Self {
+    pub fn new(name: &str) -> Self {
         // Windows calling conventions are not supported yet.
         if cfg!(windows) {
             unimplemented!();
         }
 
-        let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
+        // Target x86-64 for now. Also, faerie requires PIC.
+        let mut flag_builder = settings::builder();
+        flag_builder.enable("is_pic").unwrap();
+        let isa_builder = isa::lookup(triple!("x86_64-unknown-unknown-elf")).unwrap();
+        let isa = isa_builder.finish(settings::Flags::new(flag_builder));
+
+        let builder = FaerieBuilder::new(
+            isa,
+            name.to_owned(),
+            FaerieTrapCollection::Disabled,
+            cranelift_module::default_libcall_names(),
+        ).unwrap();
         let module = Module::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
@@ -44,7 +57,7 @@ impl JIT {
     }
 
     /// Compile a string in the toy language into machine code.
-    pub fn compile(&mut self, input: &str) -> Result<*const u8, String> {
+    pub fn compile(&mut self, input: &str) -> Result<(), String> {
         // First, parse the string, producing AST nodes.
         let (name, params, the_return, stmts) =
             parser::function(&input).map_err(|e| e.to_string())?;
@@ -81,14 +94,11 @@ impl JIT {
         // available).
         self.module.finalize_definitions();
 
-        // We can now retrieve a pointer to the machine code.
-        let code = self.module.get_finalized_function(id);
-
-        Ok(code)
+        Ok(())
     }
 
     /// Create a zero-initialized data section.
-    pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<&[u8], String> {
+    pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<(), String> {
         // The steps here are analogous to `compile`, except that data is much
         // simpler than functions.
         self.data_ctx.define(contents.into_boxed_slice());
@@ -102,9 +112,7 @@ impl JIT {
             .map_err(|e| e.to_string())?;
         self.data_ctx.clear();
         self.module.finalize_definitions();
-        let buffer = self.module.get_finalized_data(id);
-        // TODO: Can we move the unsafe into cranelift?
-        Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
+        Ok(())
     }
 
     // Translate from toy-language AST nodes into Cranelift IR.
@@ -175,6 +183,13 @@ impl JIT {
         trans.builder.finalize();
         Ok(())
     }
+
+    /// Consume self and write out an object file.
+    pub fn finish(self) {
+        let product = self.module.finish();
+        let file = File::create(product.name()).expect("error opening file");
+        product.write(file).expect("error writing to file");
+    }
 }
 
 /// A collection of state used for translating from toy-language AST nodes
@@ -183,7 +198,7 @@ struct FunctionTranslator<'a> {
     int: types::Type,
     builder: FunctionBuilder<'a>,
     variables: HashMap<String, Variable>,
-    module: &'a mut Module<SimpleJITBackend>,
+    module: &'a mut Module<FaerieBackend>,
 }
 
 impl<'a> FunctionTranslator<'a> {
