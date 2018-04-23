@@ -9,9 +9,9 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cretonne = { git = "https://github.com/cretonne/cretonne" }
-cretonne-module = { git = "https://github.com/cretonne/cretonne" }
-cretonne-simplejit = { git = "https://github.com/cretonne/cretonne" }
+cretonne = "0.6.0"
+cretonne-module = "0.6.0"
+cretonne-simplejit = "0.6.0"
 peg = "0.5.4"
 
 [build-dependencies]
