@@ -59,11 +59,12 @@ impl JIT {
         }
 
         let builder = SimpleJITBuilder::new();
+        let module = Module::new(builder);
         Self {
             builder_context: FunctionBuilderContext::<Variable>::new(),
-            ctx: codegen::Context::new(),
+            ctx: module.make_context(),
             data_ctx: DataContext::new(),
-            module: Module::new(builder),
+            module,
         }
     }
 
@@ -100,7 +101,7 @@ impl JIT {
         )?;
 
         // Now that compilation is finished, we can clear out the context state.
-        self.ctx.clear();
+        self.module.clear_context(&mut self.ctx);
 
         // Finalize the function, finishing any outstanding relocations. The
         // result is a pointer to the finished machine code.

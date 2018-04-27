@@ -9,9 +9,9 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cretonne = "0.6.0"
-cretonne-module = "0.6.0"
-cretonne-simplejit = "0.6.0"
+cretonne = "0.7.0"
+cretonne-module = "0.7.0"
+cretonne-simplejit = "0.7.0"
 peg = "0.5.4"
 
 [build-dependencies]
