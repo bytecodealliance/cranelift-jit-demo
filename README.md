@@ -3,7 +3,7 @@ Hello!
 This is a simple demo that JIT-compiles a toy language, using Cretonne.
 
 It uses the new SimpleJIT interface in development
-[here](https://github.com/sunfishcode/cretonne/tree/module). SimpleJIT takes care
+[here](https://github.com/cretonne/cretonne/tree/master/lib/simplejit). SimpleJIT takes care
 of managing a symbol table, allocating memory, and performing relocations, offering
 a relatively simple API.
 
