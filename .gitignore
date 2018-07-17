@@ -6,5 +6,5 @@ tags
 target
 Cargo.lock
 .*.rustfmt
-cretonne.dbg*
+cranelift.dbg*
 rusty-tags.*

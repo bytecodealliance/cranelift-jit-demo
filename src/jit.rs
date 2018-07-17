@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use cretonne::prelude::*;
-use cretonne_module::{DataContext, Linkage, Module, Writability};
-use cretonne_simplejit::{SimpleJITBackend, SimpleJITBuilder};
+use cranelift::prelude::*;
+use cranelift_module::{DataContext, Linkage, Module, Writability};
+use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 use std::slice;
 
 /// The AST node for expressions.
@@ -37,7 +37,7 @@ pub struct JIT {
     /// FunctionBuilder instances.
     builder_context: FunctionBuilderContext<Variable>,
 
-    /// The main Cretonne context, which holds the state for codegen. Cretonne
+    /// The main Cranelift context, which holds the state for codegen. Cranelift
     /// separates this from `Module` to allow for parallel compilation, with a
     /// context per thread, though this isn't in the simple demo here.
     ctx: codegen::Context,
@@ -74,7 +74,7 @@ impl JIT {
         let (name, params, the_return, stmts) =
             parser::function(&input).map_err(|e| e.to_string())?;
 
-        // Then, translate the AST nodes into Cretonne IR.
+        // Then, translate the AST nodes into Cranelift IR.
         self.translate(params, the_return, stmts)
             .map_err(|e| e.to_string())?;
 
@@ -122,18 +122,18 @@ impl JIT {
             .map_err(|e| e.to_string())?;
         self.data_ctx.clear();
         let buffer = self.module.finalize_data(id);
-        // TODO: Can we move the unsafe into cretonne?
+        // TODO: Can we move the unsafe into cranelift?
         Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
     }
 
-    // Translate from toy-language AST nodes into Cretonne IR.
+    // Translate from toy-language AST nodes into Cranelift IR.
     fn translate(
         &mut self,
         params: Vec<String>,
         the_return: String,
         stmts: Vec<Expr>,
     ) -> Result<(), String> {
-        // Our toy language currently only supports I64 values, though Cretonne
+        // Our toy language currently only supports I64 values, though Cranelift
         // supports other types.
         let int = self.module.pointer_type();
 
@@ -142,7 +142,7 @@ impl JIT {
         }
 
         // Our toy language currently only supports one return value, though
-        // Cretonne is designed to support more.
+        // Cranelift is designed to support more.
         self.ctx.func.signature.returns.push(AbiParam::new(int));
 
         // Create the builder to builder a function.
@@ -198,7 +198,7 @@ impl JIT {
 }
 
 /// A collection of state used for translating from toy-language AST nodes
-/// into Cretonne IR.
+/// into Cranelift IR.
 struct FunctionTranslator<'a> {
     int: types::Type,
     builder: FunctionBuilder<'a, Variable>,
@@ -207,7 +207,7 @@ struct FunctionTranslator<'a> {
 }
 
 impl<'a> FunctionTranslator<'a> {
-    /// When you write out instructions in Cretonne, you get back `Value`s. You
+    /// When you write out instructions in Cranelift, you get back `Value`s. You
     /// can then use these references in other instructions.
     fn translate_expr(&mut self, expr: Expr) -> Value {
         match expr {
@@ -298,7 +298,7 @@ impl<'a> FunctionTranslator<'a> {
 
             Expr::Assign(name, expr) => {
                 // `def_var` is used to write the value of a variable. Note that
-                // variables can have multiple definitions. Cretonne will
+                // variables can have multiple definitions. Cranelift will
                 // convert them into SSA form for itself automatically.
                 let new_value = self.translate_expr(*expr);
                 let variable = self.variables.get(&name).unwrap();
@@ -314,7 +314,7 @@ impl<'a> FunctionTranslator<'a> {
 
                 // If-else constructs in the toy language have a return value.
                 // In traditional SSA form, this would produce a PHI between
-                // the then and else bodies. Cretonne uses block parameters,
+                // the then and else bodies. Cranelift uses block parameters,
                 // so set up a parameter in the merge block, and we'll pass
                 // the return values to it from the branches.
                 self.builder.append_ebb_param(merge_block, self.int);
@@ -430,7 +430,7 @@ fn declare_variables(
     let mut index = 0;
 
     for (i, name) in params.iter().enumerate() {
-        // TODO: cton_frontend should really have an API to make it easy to set
+        // TODO: cretonne_frontend should really have an API to make it easy to set
         // up param variables.
         let val = builder.ebb_params(entry_ebb)[i];
         let var = declare_variable(int, builder, &mut variables, &mut index, name);

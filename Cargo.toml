@@ -1,7 +1,7 @@
 [package]
 name = "jit-demo"
 version = "0.0.0"
-authors = ["The Cretonne Project Developers"]
+authors = ["The Cranelift Project Developers"]
 build = "build.rs"
 license = "Apache-2.0 WITH LLVM-exception"
 
@@ -10,9 +10,9 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cretonne = "0.13.0"
-cretonne-module = "0.13.0"
-cretonne-simplejit = "0.13.0"
+cranelift = "0.15.0"
+cranelift-module = "0.15.0"
+cranelift-simplejit = "0.15.0"
 peg = "0.5.4"
 
 [build-dependencies]

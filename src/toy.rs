@@ -1,6 +1,6 @@
-extern crate cretonne;
-extern crate cretonne_module;
-extern crate cretonne_simplejit;
+extern crate cranelift;
+extern crate cranelift_module;
+extern crate cranelift_simplejit;
 
 use std::mem;
 use std::process;
@@ -16,7 +16,7 @@ fn main() {
     // The `(c)` declares a return variable; the function returns whatever value
     // it was assigned when the function exits. Note that there are multiple
     // assignments, so the input is not in SSA form, but that's ok because
-    // Cretonne handles all the details of translating into SSA form itself.
+    // Cranelift handles all the details of translating into SSA form itself.
     let foo_code = "
         fn foo(a, b) -> (c) {
             c = if a {
