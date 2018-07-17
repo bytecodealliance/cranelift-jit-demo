@@ -2,8 +2,8 @@ extern crate cretonne;
 extern crate cretonne_module;
 extern crate cretonne_simplejit;
 
-use std::process;
 use std::mem;
+use std::process;
 
 mod jit;
 
@@ -17,19 +17,19 @@ fn main() {
     // it was assigned when the function exits. Note that there are multiple
     // assignments, so the input is not in SSA form, but that's ok because
     // Cretonne handles all the details of translating into SSA form itself.
-    let foo_code = "\
-        fn foo(a, b) -> (c) {      \n\
-            c = if a {             \n\
-                if b {             \n\
-                    30             \n\
-                } else {           \n\
-                    40             \n\
-                }                  \n\
-            } else {               \n\
-                50                 \n\
-            }                      \n\
-            c = c + 2              \n\
-        }                          \n\
+    let foo_code = "
+        fn foo(a, b) -> (c) {
+            c = if a {
+                if b {
+                    30
+                } else {
+                    40
+                }
+            } else {
+                50
+            }
+            c = c + 2
+        }
     ";
 
     // Pass the string to the JIT, and it returns a raw pointer to machine code.
@@ -48,22 +48,21 @@ fn main() {
     // And now we can call it!
     println!("the answer is: {}", foo(1, 0));
 
-
     // -------------------------------------------------------------------------//
 
     // Another example: Recursive fibonacci.
     let recursive_fib_code = "\
-        fn recursive_fib(n) -> (r) {                                      \n\
-            r = if n == 0 {                                               \n\
-                     0                                                    \n\
-                } else {                                                  \n\
-                    if n == 1 {                                           \n\
-                        1                                                 \n\
-                    } else {                                              \n\
-                        recursive_fib(n - 1) + recursive_fib(n - 2)       \n\
-                    }                                                     \n\
-                }                                                         \n\
-        }                                                                 \n\
+        fn recursive_fib(n) -> (r) {
+            r = if n == 0 {
+                     0
+                } else {
+                    if n == 1 {
+                        1
+                    } else {
+                        recursive_fib(n - 1) + recursive_fib(n - 2)
+                    }
+                }
+        }
     ";
 
     // Same as above.
@@ -76,26 +75,25 @@ fn main() {
     // And we can now call it!
     println!("recursive_fib(10) = {}", recursive_fib(10));
 
-
     // -------------------------------------------------------------------------//
 
     // Another example: Iterative fibonacci.
     let iterative_fib_code = "\
-        fn iterative_fib(n) -> (r) {                                      \n\
-            if n == 0 {                                                   \n\
-                r = 0                                                     \n\
-            } else {                                                      \n\
-                n = n - 1                                                 \n\
-                a = 0                                                     \n\
-                r = 1                                                     \n\
-                while n != 0 {                                            \n\
-                    t = r                                                 \n\
-                    r = r + a                                             \n\
-                    a = t                                                 \n\
-                    n = n - 1                                             \n\
-                }                                                         \n\
-            }                                                             \n\
-        }                                                                 \n\
+        fn iterative_fib(n) -> (r) {
+            if n == 0 {
+                r = 0
+            } else {
+                n = n - 1
+                a = 0
+                r = 1
+                while n != 0 {
+                    t = r
+                    r = r + a
+                    a = t
+                    n = n - 1
+                }
+            }
+        }
     ";
 
     // Same as above.
@@ -108,15 +106,14 @@ fn main() {
     // And we can now call it!
     println!("iterative_fib(10) = {}", iterative_fib(10));
 
-
     // -------------------------------------------------------------------------//
 
     // Let's say hello, by calling into libc. The puts function is resolved by
     // dlsym to the libc function, and the string &hello_string is defined below.
     let hello_code = "\
-        fn hello() -> (r) {                                               \n\
-            puts(&hello_string)                                           \n\
-        }                                                                 \n\
+        fn hello() -> (r) {
+            puts(&hello_string)
+        }
     ";
 
     jit.create_data("hello_string", "hello world\0".as_bytes().to_vec())
