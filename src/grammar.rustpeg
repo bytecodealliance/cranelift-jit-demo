@@ -1,20 +1,20 @@
 use super::Expr;
 
 pub function -> (String, Vec<String>, String, Vec<Expr>)
-    = "fn" _ name: identifier _
+    = [ \t\n]* "fn" _ name: identifier _
       "(" params:((_ i:identifier _ {i}) ** ",") ")" _
       "->" _
       "(" returns:(_ i:identifier _ {i}) ")" _
       "{" _ "\n"
       stmts:statements
-      "}" _ "\n"
+      _ "}" _ "\n" _
       { (name, params, returns, stmts) }
 
 statements -> Vec<Expr>
     = s:(statement*) { s }
 
 statement -> Expr
-    = e:expression _ "\n" { e }
+    = _ e:expression _ "\n" { e }
 
 expression -> Expr
     = if_else
