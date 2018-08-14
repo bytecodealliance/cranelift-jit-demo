@@ -251,7 +251,7 @@ is mostly handled by `FunctionBuilder`'s `use_var` function:
 
 Its companion is `def_var`, which is used to write the value of a (non-SSA)
 variable, which we use to implement assignment:
-```
+```rust
     Expr::Assign(name, expr) => {
         // `def_var` is used to write the value of a variable. Note that
         // variables can have multiple definitions. Cranelift will
