@@ -84,7 +84,8 @@ impl JIT {
         // TODO: This may be an area where the API should be streamlined; should
         // we have a version of `declare_function` that automatically declares
         // the function?
-        let id = self.module
+        let id = self
+            .module
             .declare_function(&name, Linkage::Export, &self.ctx.func.signature)
             .map_err(|e| e.to_string())?;
 
@@ -113,7 +114,8 @@ impl JIT {
         // simpler than functions.
         self.data_ctx
             .define(contents.into_boxed_slice(), Writability::Writable);
-        let id = self.module
+        let id = self
+            .module
             .declare_data(name, Linkage::Export, true)
             .map_err(|e| e.to_string())?;
 
@@ -264,7 +266,8 @@ impl<'a> FunctionTranslator<'a> {
             Expr::Le(lhs, rhs) => {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
-                let c = self.builder
+                let c = self
+                    .builder
                     .ins()
                     .icmp(IntCC::SignedLessThanOrEqual, lhs, rhs);
                 self.builder.ins().bint(self.int, c)
@@ -280,7 +283,8 @@ impl<'a> FunctionTranslator<'a> {
             Expr::Ge(lhs, rhs) => {
                 let lhs = self.translate_expr(*lhs);
                 let rhs = self.translate_expr(*rhs);
-                let c = self.builder
+                let c = self
+                    .builder
                     .ins()
                     .icmp(IntCC::SignedGreaterThanOrEqual, lhs, rhs);
                 self.builder.ins().bint(self.int, c)
@@ -392,10 +396,12 @@ impl<'a> FunctionTranslator<'a> {
         sig.returns.push(AbiParam::new(self.int));
 
         // TODO: Streamline the API here?
-        let callee = self.module
+        let callee = self
+            .module
             .declare_function(&name, Linkage::Import, &sig)
             .expect("problem declaring function");
-        let local_callee = self.module
+        let local_callee = self
+            .module
             .declare_func_in_func(callee, &mut self.builder.func);
 
         let mut arg_values = Vec::new();
@@ -407,10 +413,12 @@ impl<'a> FunctionTranslator<'a> {
     }
 
     fn translate_global_data_addr(&mut self, name: String) -> Value {
-        let sym = self.module
+        let sym = self
+            .module
             .declare_data(&name, Linkage::Export, true)
             .expect("problem declaring data object");
-        let local_id = self.module
+        let local_id = self
+            .module
             .declare_data_in_func(sym, &mut self.builder.func);
 
         let pointer = self.module.pointer_type();
