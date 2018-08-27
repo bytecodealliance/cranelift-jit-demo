@@ -413,7 +413,7 @@ fn declare_variables(
     let mut index = 0;
 
     for (i, name) in params.iter().enumerate() {
-        // TODO: cretonne_frontend should really have an API to make it easy to set
+        // TODO: cranelift_frontend should really have an API to make it easy to set
         // up param variables.
         let val = builder.ebb_params(entry_ebb)[i];
         let var = declare_variable(int, builder, &mut variables, &mut index, name);
