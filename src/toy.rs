@@ -5,6 +5,7 @@ extern crate cranelift_simplejit;
 use std::mem;
 use std::process;
 
+mod frontend;
 mod jit;
 
 fn main() {
