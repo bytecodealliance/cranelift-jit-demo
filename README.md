@@ -63,7 +63,7 @@ The grammar for this toy language is defined in a grammar file
 and this demo uses the [peg](https://crates.io/crates/peg) parser generator library
 to generate actual parser code for it.
 
-The output of parsing is a [custom AST type](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L13):
+The output of parsing is a [custom AST type](https://github.com/sunfishcode/simplejit-demo/blob/master/src/parser.rs#L1):
 ```rust
 pub enum Expr {
     Literal(String),
@@ -90,14 +90,14 @@ It's pretty minimal and straightforward. The `IfElse` can return a value, to sho
 how that's done in Cranelift (see below).
 
 The
-[first thing we do](https://github.com/sunfishcode/simplejit-demo/blob/master/src/toy.rs#L12)
+[first thing we do](https://github.com/sunfishcode/simplejit-demo/blob/master/src/toy.rs#L13)
 is create an instance of our `JIT`:
 ```rust
 let mut jit = jit::JIT::new();
 ```
 
 The `JIT` class is defined
-[here](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L40)
+[here](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L8)
 and contains several fields:
  - `builder_context` - Cranelift uses this to reuse dynamic allocations between
    compiling multiple functions.
@@ -117,49 +117,49 @@ Both functions and data objects can contain references to other functions and
 data objects. Cranelift is designed to allow the low-level parts operate on each
 function and data object independently, so each function and data object maintains
 its own individual namespace of imported names. The
-[`Module`](https://docs.rs/cranelift-module/0.6.0/cranelift_module/struct.Module.html)
+[`Module`](https://docs.rs/cranelift-module/0.19.0/cranelift_module/struct.Module.html)
 struct takes care of maintaining a set of declarations for use across multiple
 functions and data objects.
 
 These concepts are sufficiently general that they're applicable to JITing as
 well as native object files (more discussion below!), and `Module` provides an
 interface which abstracts over both. It is parameterized with a
-[`Backend`](https://docs.rs/cranelift-module/0.6.0/cranelift_module/trait.Backend.html)
+[`Backend`](https://docs.rs/cranelift-module/0.19.0/cranelift_module/trait.Backend.html)
 trait, which allows users to specify what underlying implementation they want to use.
 
 Once we've
-[initialized the JIT data structures](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L64),
+[initialized the JIT data structures](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L42),
 we then use our `JIT` to
-[compile](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L73)
+[compile](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L45)
 some functions.
 
 The `JIT`'s `compile` function takes a string containing a function in the
 toy language. It
-[parses](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L75)
+[parses](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L47)
 the string into an AST, and then
-[translates](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L79)
+[translates](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L51)
 the AST into Cranelift IR.
 
 Our toy language only supports one type, so we start by
-[declaring that type](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L143)
+[declaring that type](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L112)
 for convenience.
 
 We then we start translating the function by adding
-[the function parameters](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L147)
+[the function parameters](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L116)
 and
-[return types](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L151)
+[return types](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L120)
 to the Cranelift function signature.
 
 Then we
-[create](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L155)
+[create](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L124)
 a
-[FunctionBuilder](https://docs.rs/cranelift-frontend/0.6.0/cranelift_frontend/struct.FunctionBuilder.html)
+[FunctionBuilder](https://docs.rs/cranelift-frontend/0.19.0/cranelift_frontend/struct.FunctionBuilder.html)
 which is a utility for building up the contents of a Cranelift IR function. As we'll
 see below, `FunctionBuilder` includes functionality for constructing SSA form
 automatically so that users don't have to worry about it.
 
 Next, we
-[start](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L159)
+[start](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L128)
 an initial extended basic block (EBB), which is the entry block of the function, and
 the place where we'll insert some code.
 
@@ -179,15 +179,15 @@ them directly generally don't need to worry about them, though one place they
 do come up is that incoming arguments to a function are represented as
 EBB parameters to the entry block. We must tell Cranelift to add the parameters,
 using
-[`append_ebb_params_for_function_params`](https://docs.rs/cranelift-frontend/0.6.0/cranelift_frontend/struct.FunctionBuilder.html#method.append_ebb_params_for_function_params)
+[`append_ebb_params_for_function_params`](https://docs.rs/cranelift-frontend/0.19.0/cranelift_frontend/struct.FunctionBuilder.html#method.append_ebb_params_for_function_params)
 like
-[so](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L162).
+[so](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L131).
 
 The `FunctionBuilder` keeps track of a "current" EBB that new instructions are
 to be inserted into; we next
-[inform](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L168)
+[inform](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L137)
 it of our new block, using
-[`switch_to_block`](https://docs.rs/cranelift-frontend/0.6.0/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
+[`switch_to_block`](https://docs.rs/cranelift-frontend/0.19.0/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
 so that we can start
 inserting instructions into it.
 
@@ -195,23 +195,23 @@ The one major concept about EBBs is that the `FunctionBuilder` wants to know whe
 all branches which could branch to an EBB have been seen, at which point it can
 *seal* the EBB, which allows it to perform SSA construction. All EBBs must be
 sealed by the end of the function. We
-[seal](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L171)
+[seal](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L140)
 an EBB with
-[`seal_block`](https://docs.rs/cranelift-frontend/0.6.0/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
+[`seal_block`](https://docs.rs/cranelift-frontend/0.19.0/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
 
 Next, our toy language doesn't have explicit variable declarations, so we walk the
 AST to discover all the variables, so that we can
-[declare](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L176)
+[declare](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L145)
 then to the `FunctionBuilder`. These variables need not be in SSA form; the
 `FunctionBuilder` will take care of constructing SSA form internally.
 
 For convenience when walking the function body, the demo here
-[uses](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L181)
+[uses](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L150)
  a `FunctionTranslator` object, which holds the `FunctionBuilder`, the current
 `Module`, as well as the symbol table for looking up variables. Now we can start
-[walking the function body](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L188).
+[walking the function body](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L157).
 
-[AST translation](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L219)
+[AST translation](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L186)
 utilizes the instruction-building features of `FunctionBuilder`. Let's start with
 a simple example translating integer literals:
 
@@ -233,11 +233,11 @@ line is the builder line:
    a function call.
 
 Translation of
-[Add nodes](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L226)
+[Add nodes](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L195)
 and other arithmetic operations is similarly straightforward.
 
 Translation of
-[variable references](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L304)
+[variable references](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L271)
 is mostly handled by `FunctionBuilder`'s `use_var` function:
 ```rust
     Expr::Identifier(name) => {
@@ -264,7 +264,7 @@ variable, which we use to implement assignment:
 ```
 
 Next, let's dive into
-[if-else](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L320)
+[if-else](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L287)
 expressions. In order to demonstrate explicit SSA construction, this demo gives
 if-else expressions return values. The way this looks in Cranelift is that
 The true and false arms of the if-else both have branches to a common merge point,
@@ -275,16 +275,16 @@ which is something that a typical AST makes it easy to know.
 
 TODO: Show the cranelift IR here.
 
-The [while loop](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L367)
+The [while loop](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L334)
 translation is also straightforward.
 
 TODO: Show the cranelift IR here.
 
 TODO:
-[calls](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L394)
+[calls](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L361)
 
 TODO:
-[global data symbols](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L422)
+[global data symbols](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L389)
 
 And with that, we can return to our main `toy.rs` file and run some more examples.
 
@@ -321,9 +321,3 @@ awkward, please let us know, via
 just stop by the [gitter chat](https://gitter.im/cranelift/Lobby/~chat).
 Very few things in Cranelift's design are set in stone at this time, and we're
 really interested to hear from people about what makes sense what doesn't.
-
-TODO: update llvm2cranelift for api changes
-
-TODO: update https://github.com/cranelift/cranelift-getting-started for api changes
-
-TODO: update wasmstandalone for api changes
