@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use cranelift::prelude::*;
-use cranelift_module::{DataContext, Linkage, Module, Writability};
+use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 use frontend::*;
 use std::slice;
@@ -10,7 +10,7 @@ use std::slice;
 pub struct JIT {
     /// The function builder context, which is reused across multiple
     /// FunctionBuilder instances.
-    builder_context: FunctionBuilderContext<Variable>,
+    builder_context: FunctionBuilderContext,
 
     /// The main Cranelift context, which holds the state for codegen. Cranelift
     /// separates this from `Module` to allow for parallel compilation, with a
@@ -36,7 +36,7 @@ impl JIT {
         let builder = SimpleJITBuilder::new();
         let module = Module::new(builder);
         Self {
-            builder_context: FunctionBuilderContext::<Variable>::new(),
+            builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
             data_ctx: DataContext::new(),
             module,
@@ -87,8 +87,7 @@ impl JIT {
     pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<&[u8], String> {
         // The steps here are analogous to `compile`, except that data is much
         // simpler than functions.
-        self.data_ctx
-            .define(contents.into_boxed_slice(), Writability::Writable);
+        self.data_ctx.define(contents.into_boxed_slice());
         let id = self
             .module
             .declare_data(name, Linkage::Export, true)
@@ -123,8 +122,7 @@ impl JIT {
         self.ctx.func.signature.returns.push(AbiParam::new(int));
 
         // Create the builder to builder a function.
-        let mut builder =
-            FunctionBuilder::<Variable>::new(&mut self.ctx.func, &mut self.builder_context);
+        let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 
         // Create the entry block, to start emitting code in.
         let entry_ebb = builder.create_ebb();
@@ -178,7 +176,7 @@ impl JIT {
 /// into Cranelift IR.
 struct FunctionTranslator<'a> {
     int: types::Type,
-    builder: FunctionBuilder<'a, Variable>,
+    builder: FunctionBuilder<'a>,
     variables: HashMap<String, Variable>,
     module: &'a mut Module<SimpleJITBackend>,
 }
@@ -360,7 +358,7 @@ impl<'a> FunctionTranslator<'a> {
     }
 
     fn translate_call(&mut self, name: String, args: Vec<Expr>) -> Value {
-        let mut sig = Signature::new(CallConv::SystemV);
+        let mut sig = self.module.make_signature();
 
         // Add a parameter for each argument.
         for _arg in &args {
@@ -397,13 +395,13 @@ impl<'a> FunctionTranslator<'a> {
             .declare_data_in_func(sym, &mut self.builder.func);
 
         let pointer = self.module.pointer_type();
-        self.builder.ins().globalsym_addr(pointer, local_id)
+        self.builder.ins().symbol_value(pointer, local_id)
     }
 }
 
 fn declare_variables(
     int: types::Type,
-    builder: &mut FunctionBuilder<Variable>,
+    builder: &mut FunctionBuilder,
     params: &[String],
     the_return: &str,
     stmts: &[Expr],
@@ -433,7 +431,7 @@ fn declare_variables(
 /// variable declarations.
 fn declare_variables_in_stmt(
     int: types::Type,
-    builder: &mut FunctionBuilder<Variable>,
+    builder: &mut FunctionBuilder,
     variables: &mut HashMap<String, Variable>,
     index: &mut usize,
     expr: &Expr,
@@ -462,7 +460,7 @@ fn declare_variables_in_stmt(
 /// Declare a single variable declaration.
 fn declare_variable(
     int: types::Type,
-    builder: &mut FunctionBuilder<Variable>,
+    builder: &mut FunctionBuilder,
     variables: &mut HashMap<String, Variable>,
     index: &mut usize,
     name: &str,
