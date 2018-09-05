@@ -275,29 +275,45 @@ which is something that a typical AST makes it easy to know.
 
 TODO: Show the cranelift IR here.
 
-The [while loop](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L334)
+The [while loop](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L333)
 translation is also straightforward.
 
 TODO: Show the cranelift IR here.
 
-TODO:
-[calls](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L361)
+For
+[calls](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L360),
+the basic steps are to determine the call signature, declare the function to be
+called, put the values to be passed in an array, and then call the `call` function.
 
-TODO:
-[global data symbols](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L389)
+The translation for
+[global data symbols](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L388),
+is similar; first declare the symbol to the module, then declare it to the current
+fucntion, and then use the `symbol_value` instruction to produce the value.
 
 And with that, we can return to our main `toy.rs` file and run some more examples.
+There are examples of recursive and iterative fibonacci, which demonstrate more use
+of calls and control flow.
 
-TODO: recursive fib, iterative fib
+And there's a hello world example which demonstrates several other features.
+
+This program needs to allocate some
+[data](https://github.com/CraneStation/simplejit-demo/blob/master/src/toy.rs#L120)
+to hold the string data. Inside jit.rs,
+[`create_data`](https://github.com/CraneStation/simplejit-demo/blob/master/src/jit.rs#L86)
+we initialize a `DataContext` with the contents of the hello string, and also
+declare a data object. Then we use the `DataContext` object to define the object.
+At that point, we're done with the `DataContext` object and can clear it. We
+then call `finalize_data` to perform linking (although our simple hello string
+doesn't make any references so there isn't anything to do) and to obtain the
+final runtime address of the data, which we then convert back into a Rust slice
+for convenience.
 
 And to show off a handy feature of the simplejit backend, it can look up symbols
 with `libc::dlsym`, so you can call libc functions such as `puts` (being careful
 to NUL-terminate your strings!). Unfortunately, `printf` requires varargs, which
 Cranelift does not yet support.
 
-TODO: talk about defining the hello world string data object.
-
-And so we can say, "hello world"!.
+And with all that, we can say "hello world"!.
 
 
 ### Native object files
@@ -309,9 +325,11 @@ This writes a `test.o` file, which on an x86-64 ELF platform you can link with
 `cc test.o` and it produces an executable that calls the generated functions,
 including printing "hello world"!.
 
+Another branch [here](https://github.com/sunfishcode/simplejit-demo/tree/faerie-macho).
+shows how to write Mach-O object files.
+
 Object files are written using the
-[faerie](https://github.com/m4b/faerie) library, which also has Mach-O support
-at this time, though I haven't tried it yet.
+[faerie](https://github.com/m4b/faerie) library.
 
 ### Have fun!
 
