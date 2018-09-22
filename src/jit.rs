@@ -76,9 +76,13 @@ impl JIT {
         // Now that compilation is finished, we can clear out the context state.
         self.module.clear_context(&mut self.ctx);
 
-        // Finalize the function, finishing any outstanding relocations. The
-        // result is a pointer to the finished machine code.
-        let code = self.module.finalize_function(id);
+        // Finalize the functions which we just defined, which resolves any
+        // outstanding relocations (patching in addresses, now that they're
+        // available).
+        self.module.finalize_definitions();
+
+        // We can now retrieve a pointer to the machine code.
+        let code = self.module.get_finalized_function(id);
 
         Ok(code)
     }
@@ -97,7 +101,8 @@ impl JIT {
             .define_data(id, &self.data_ctx)
             .map_err(|e| e.to_string())?;
         self.data_ctx.clear();
-        let buffer = self.module.finalize_data(id);
+        self.module.finalize_definitions();
+        let buffer = self.module.get_finalized_data(id);
         // TODO: Can we move the unsafe into cranelift?
         Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
     }
