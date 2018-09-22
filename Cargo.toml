@@ -4,6 +4,8 @@ version = "0.0.0"
 authors = ["The Cranelift Project Developers"]
 build = "build.rs"
 license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://github.com/CraneStation/simplejit-demo"
+description = "Toy language implemented using cranelift-simplejit"
 
 [[bin]]
 name = "toy"
