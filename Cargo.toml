@@ -1,5 +1,5 @@
 [package]
-name = "jit-demo"
+name = "simplejit-demo"
 version = "0.0.0"
 authors = ["The Cranelift Project Developers"]
 build = "build.rs"
@@ -12,9 +12,9 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cranelift = "0.22.0"
-cranelift-module = "0.22.0"
-cranelift-simplejit = "0.22.0"
+cranelift = "0.25.0"
+cranelift-module = "0.25.0"
+cranelift-simplejit = "0.25.0"
 peg = "0.5.4"
 
 [build-dependencies]

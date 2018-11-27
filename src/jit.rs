@@ -116,7 +116,7 @@ impl JIT {
     ) -> Result<(), String> {
         // Our toy language currently only supports I64 values, though Cranelift
         // supports other types.
-        let int = self.module.pointer_type();
+        let int = self.module.target_config().pointer_type();
 
         for _p in &params {
             self.ctx.func.signature.params.push(AbiParam::new(int));
@@ -399,7 +399,7 @@ impl<'a> FunctionTranslator<'a> {
             .module
             .declare_data_in_func(sym, &mut self.builder.func);
 
-        let pointer = self.module.pointer_type();
+        let pointer = self.module.target_config().pointer_type();
         self.builder.ins().symbol_value(pointer, local_id)
     }
 }
