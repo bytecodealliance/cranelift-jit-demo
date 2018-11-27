@@ -170,10 +170,25 @@ the place where we'll insert some code.
  - Cranelift IR uses *extended* basic blocks, which are similar to basic blocks,
    except they may branch out from the middle.
 
-   TODO: add an illustration here
-
 Cranelift's extended basic blocks can have parameters. These take the place of
-PHI functions in other IRs. The `FunctionBuilder` library will take care of
+PHI functions in other IRs.
+
+Here's an example of an EBB, showing branches (`brif`) that may leave the EBB in
+the middle of the instruction sequence, and demonstrating some EBB parameters.
+
+```
+ebb0(v0: i32, v1: i32, v2: i32, v507: i64):
+    v508 = iconst.i32 0
+    v509 = iconst.i64 0
+    v404 = ifcmp_imm v2, 0
+    brif eq v404, ebb8(v0, v1, v2)
+    v10 = iadd_imm v2, -7
+    v405 = ifcmp_imm v2, 7
+    brif ugt v405, ebb29(v10)
+    jump ebb29(v508)
+```
+
+The `FunctionBuilder` library will take care of
 inserting EBB parameters automatically, so frontends that don't need to use
 them directly generally don't need to worry about them, though one place they
 do come up is that incoming arguments to a function are represented as
@@ -273,12 +288,85 @@ and they each pass their "return value" as an EBB parameter to the merge point.
 Note that we seal the EBBs we create once we know we'll have no more predecessors,
 which is something that a typical AST makes it easy to know.
 
-TODO: Show the cranelift IR here.
+Putting it all together, Here's the Cranelift IR for the function named
+[foo](https://github.com/CraneStation/simplejit-demo/blob/master/src/toy.rs#L15)
+in the demo program, which contains multiple ifs:
+
+```
+function u0:0(i64, i64) -> i64 system_v {
+ebb0(v0: i64, v1: i64):
+    v2 = iconst.i64 0
+    brz v0, ebb1
+    v4 = iconst.i64 0
+    brz v1, ebb3
+    v6 = iconst.i64 0
+    v7 = iconst.i64 30
+    jump ebb4(v7)
+
+ebb3:
+    v8 = iconst.i64 0
+    v9 = iconst.i64 40
+    jump ebb4(v9)
+
+ebb4(v5: i64):
+    jump ebb2(v5)
+
+ebb1:
+    v10 = iconst.i64 0
+    v11 = iconst.i64 50
+    jump ebb2(v11)
+
+ebb2(v3: i64):
+    v12 = iconst.i64 2
+    v13 = iadd v3, v12
+    return v13
+}
+```
 
 The [while loop](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L338)
 translation is also straightforward.
 
-TODO: Show the cranelift IR here.
+Here's the Cranelift IR for the function named [iterative_fib](https://github.com/CraneStation/simplejit-demo/blob/master/src/toy.rs#L81)
+in the demo program, which contains a while loop:
+
+```
+function u0:0(i64) -> i64 system_v {
+ebb0(v0: i64):
+    v1 = iconst.i64 0
+    v2 = iconst.i64 0
+    v3 = icmp eq v0, v2
+    v4 = bint.i64 v3
+    brz v4, ebb1
+    v6 = iconst.i64 0
+    v7 = iconst.i64 0
+    jump ebb2(v7, v7)
+
+ebb1:
+    v8 = iconst.i64 0
+    v9 = iconst.i64 1
+    v10 = isub.i64 v0, v9
+    v11 = iconst.i64 0
+    v12 = iconst.i64 1
+    jump ebb3(v10, v12, v11)
+
+ebb3(v13: i64, v17: i64, v18: i64):
+    v14 = iconst.i64 0
+    v15 = icmp ne v13, v14
+    v16 = bint.i64 v15
+    brz v16, ebb4
+    v19 = iadd v17, v18
+    v20 = iconst.i64 1
+    v21 = isub v13, v20
+    jump ebb3(v21, v19, v17)
+
+ebb4:
+    v22 = iconst.i64 0
+    jump ebb2(v22, v17)
+
+ebb2(v5: i64, v23: i64):
+    return v23
+}
+```
 
 For
 [calls](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L365),
