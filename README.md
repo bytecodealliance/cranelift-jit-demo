@@ -282,13 +282,13 @@ Next, let's dive into
 [if-else](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L291)
 expressions. In order to demonstrate explicit SSA construction, this demo gives
 if-else expressions return values. The way this looks in Cranelift is that
-The true and false arms of the if-else both have branches to a common merge point,
+the true and false arms of the if-else both have branches to a common merge point,
 and they each pass their "return value" as an EBB parameter to the merge point.
 
 Note that we seal the EBBs we create once we know we'll have no more predecessors,
 which is something that a typical AST makes it easy to know.
 
-Putting it all together, Here's the Cranelift IR for the function named
+Putting it all together, here's the Cranelift IR for the function named
 [foo](https://github.com/CraneStation/simplejit-demo/blob/master/src/toy.rs#L15)
 in the demo program, which contains multiple ifs:
 
@@ -376,7 +376,7 @@ called, put the values to be passed in an array, and then call the `call` functi
 The translation for
 [global data symbols](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L393),
 is similar; first declare the symbol to the module, then declare it to the current
-fucntion, and then use the `symbol_value` instruction to produce the value.
+function, and then use the `symbol_value` instruction to produce the value.
 
 And with that, we can return to our main `toy.rs` file and run some more examples.
 There are examples of recursive and iterative fibonacci, which demonstrate more use
@@ -401,7 +401,7 @@ with `libc::dlsym`, so you can call libc functions such as `puts` (being careful
 to NUL-terminate your strings!). Unfortunately, `printf` requires varargs, which
 Cranelift does not yet support.
 
-And with all that, we can say "hello world"!.
+And with all that, we can say "hello world!".
 
 
 ### Native object files
@@ -411,7 +411,7 @@ Because of the `Module` abstraction, this demo can be adapted to write out an EL
 so in a branch [here](https://github.com/sunfishcode/simplejit-demo/tree/faerie).
 This writes a `test.o` file, which on an x86-64 ELF platform you can link with
 `cc test.o` and it produces an executable that calls the generated functions,
-including printing "hello world"!.
+including printing "hello world!".
 
 Another branch [here](https://github.com/sunfishcode/simplejit-demo/tree/faerie-macho).
 shows how to write Mach-O object files.
@@ -423,7 +423,7 @@ Object files are written using the
 
 Cranelift is still evolving, so if there are things here which are confusing or
 awkward, please let us know, via
-[githib issues](https://github.com/cranelift/cranelift/issues) or
+[github issues](https://github.com/cranelift/cranelift/issues) or
 just stop by the [gitter chat](https://gitter.im/cranelift/Lobby/~chat).
 Very few things in Cranelift's design are set in stone at this time, and we're
 really interested to hear from people about what makes sense what doesn't.
