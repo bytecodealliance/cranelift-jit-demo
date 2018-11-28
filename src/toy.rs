@@ -117,7 +117,7 @@ fn main() {
         }
     ";
 
-    jit.create_data("hello_string", "hello world\0".as_bytes().to_vec())
+    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())
         .unwrap_or_else(|msg| {
             eprintln!("error: {}", msg);
             process::exit(1);
