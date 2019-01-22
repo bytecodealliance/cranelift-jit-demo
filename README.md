@@ -424,6 +424,6 @@ Object files are written using the
 Cranelift is still evolving, so if there are things here which are confusing or
 awkward, please let us know, via
 [github issues](https://github.com/cranelift/cranelift/issues) or
-just stop by the [gitter chat](https://gitter.im/cranelift/Lobby/~chat).
+just stop by the [gitter chat](https://gitter.im/CraneStation/Lobby/~chat).
 Very few things in Cranelift's design are set in stone at this time, and we're
 really interested to hear from people about what makes sense what doesn't.
