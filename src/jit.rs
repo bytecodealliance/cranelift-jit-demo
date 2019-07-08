@@ -33,7 +33,7 @@ impl JIT {
             unimplemented!();
         }
 
-        let builder = SimpleJITBuilder::new();
+        let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
         let module = Module::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
@@ -94,7 +94,7 @@ impl JIT {
         self.data_ctx.define(contents.into_boxed_slice());
         let id = self
             .module
-            .declare_data(name, Linkage::Export, true)
+            .declare_data(name, Linkage::Export, true, None)
             .map_err(|e| e.to_string())?;
 
         self.module
@@ -393,7 +393,7 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_global_data_addr(&mut self, name: String) -> Value {
         let sym = self
             .module
-            .declare_data(&name, Linkage::Export, true)
+            .declare_data(&name, Linkage::Export, true, None)
             .expect("problem declaring data object");
         let local_id = self
             .module
