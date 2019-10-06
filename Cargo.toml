@@ -2,7 +2,6 @@
 name = "simplejit-demo"
 version = "0.0.0"
 authors = ["The Cranelift Project Developers"]
-build = "build.rs"
 license = "Apache-2.0 WITH LLVM-exception"
 repository = "https://github.com/CraneStation/simplejit-demo"
 description = "Toy language implemented using cranelift-simplejit"
@@ -15,7 +14,5 @@ path = "src/toy.rs"
 cranelift = "0.33.0"
 cranelift-module = "0.33.0"
 cranelift-simplejit = "0.33.0"
-peg = "0.5.4"
+peg = "0.6"
 
-[build-dependencies]
-peg = { version = "0.5.4" }
