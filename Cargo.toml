@@ -15,7 +15,7 @@ path = "src/toy.rs"
 cranelift = "0.33.0"
 cranelift-module = "0.33.0"
 cranelift-simplejit = "0.33.0"
-peg = "0.5.4"
+peg = "0.6.0"
 
 [build-dependencies]
-peg = { version = "0.5.4" }
+peg = { version = "0.6.0" }
