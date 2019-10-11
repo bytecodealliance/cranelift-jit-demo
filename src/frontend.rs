@@ -40,7 +40,7 @@ peg::parser!(pub grammar parser() for str {
         = if_else()
         / while_loop()
         / i:identifier() _ "=" _ e:expression() { Expr::Assign(i, Box::new(e)) }
-        / compare()
+        / binary_op()
 
     rule if_else() -> Expr
         = "if" _ e:expression() _ "{" _ "\n"
@@ -53,29 +53,24 @@ peg::parser!(pub grammar parser() for str {
         loop_body:statements() _ "}"
         { Expr::WhileLoop(Box::new(e), loop_body) }
 
-    rule compare() -> Expr
-        = a:sum() _ "==" _ b:compare() { Expr::Eq(Box::new(a), Box::new(b)) }
-        / a:sum() _ "!=" _ b:compare() { Expr::Ne(Box::new(a), Box::new(b)) }
-        / a:sum() _ "<"  _ b:compare() { Expr::Lt(Box::new(a), Box::new(b)) }
-        / a:sum() _ "<=" _ b:compare() { Expr::Le(Box::new(a), Box::new(b)) }
-        / a:sum() _ ">"  _ b:compare() { Expr::Gt(Box::new(a), Box::new(b)) }
-        / a:sum() _ ">=" _ b:compare() { Expr::Ge(Box::new(a), Box::new(b)) }
-        / sum()
-
-    rule sum() -> Expr
-        = a:product() _ "+" _ b:sum() { Expr::Add(Box::new(a), Box::new(b)) }
-        / a:product() _ "-" _ b:sum() { Expr::Sub(Box::new(a), Box::new(b)) }
-        / product()
-
-    rule product() -> Expr
-        = a:call_or_identifier_or_literal() _ "*" _ b:product() { Expr::Mul(Box::new(a), Box::new(b)) }
-        / a:call_or_identifier_or_literal() _ "/" _ b:product() { Expr::Div(Box::new(a), Box::new(b)) }
-        / call_or_identifier_or_literal()
-
-    rule call_or_identifier_or_literal() -> Expr
-        = i:identifier() _ "(" args:((_ e:expression() _ {e}) ** ",") ")" { Expr::Call(i, args) }
-        / i:identifier() { Expr::Identifier(i) }
-        / literal()
+    rule binary_op() -> Expr = precedence!{
+        a:@ _ "==" _ b:(@) { Expr::Eq(Box::new(a), Box::new(b)) }
+        a:@ _ "!=" _ b:(@) { Expr::Ne(Box::new(a), Box::new(b)) }
+        a:@ _ "<"  _ b:(@) { Expr::Lt(Box::new(a), Box::new(b)) }
+        a:@ _ "<=" _ b:(@) { Expr::Le(Box::new(a), Box::new(b)) }
+        a:@ _ ">"  _ b:(@) { Expr::Gt(Box::new(a), Box::new(b)) }
+        a:@ _ ">=" _ b:(@) { Expr::Ge(Box::new(a), Box::new(b)) }
+        --
+        a:@ _ "+" _ b:(@) { Expr::Add(Box::new(a), Box::new(b)) }
+        a:@ _ "-" _ b:(@) { Expr::Sub(Box::new(a), Box::new(b)) }
+        --
+        a:@ _ "*" _ b:(@) { Expr::Mul(Box::new(a), Box::new(b)) }
+        a:@ _ "/" _ b:(@) { Expr::Div(Box::new(a), Box::new(b)) }
+        --
+        i:identifier() _ "(" args:((_ e:expression() _ {e}) ** ",") ")" { Expr::Call(i, args) }
+        i:identifier() { Expr::Identifier(i) }
+        l:literal() { l }
+    }
 
     rule identifier() -> String
         = quiet!{ n:$(['a'..='z' | 'A'..='Z' | '_']['a'..='z' | 'A'..='Z' | '0'..='9' | '_']*) { n.to_owned() } }
