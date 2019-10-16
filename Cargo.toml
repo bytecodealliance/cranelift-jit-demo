@@ -11,8 +11,8 @@ name = "toy"
 path = "src/toy.rs"
 
 [dependencies]
-cranelift = "0.33.0"
-cranelift-module = "0.33.0"
-cranelift-simplejit = "0.33.0"
+cranelift = "0.46"
+cranelift-module = "0.46"
+cranelift-simplejit = "0.46"
 peg = "0.6"
 

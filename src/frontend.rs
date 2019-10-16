@@ -39,7 +39,7 @@ peg::parser!(pub grammar parser() for str {
     rule expression() -> Expr
         = if_else()
         / while_loop()
-        / i:identifier() _ "=" _ e:expression() { Expr::Assign(i, Box::new(e)) }
+        / assignment()
         / binary_op()
 
     rule if_else() -> Expr
@@ -52,6 +52,9 @@ peg::parser!(pub grammar parser() for str {
         = "while" _ e:expression() _ "{" _ "\n"
         loop_body:statements() _ "}"
         { Expr::WhileLoop(Box::new(e), loop_body) }
+
+    rule assignment() -> Expr 
+        = i:identifier() _ "=" _ e:expression() {Expr::Assign(i, Box::new(e))}
 
     rule binary_op() -> Expr = precedence!{
         a:@ _ "==" _ b:(@) { Expr::Eq(Box::new(a), Box::new(b)) }

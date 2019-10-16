@@ -19,7 +19,7 @@ fn main() {
     // it was assigned when the function exits. Note that there are multiple
     // assignments, so the input is not in SSA form, but that's ok because
     // Cranelift handles all the details of translating into SSA form itself.
-    let foo_code = "
+    let foo_code = r#"
         fn foo(a, b) -> (c) {
             c = if a {
                 if b {
@@ -32,7 +32,7 @@ fn main() {
             }
             c = c + 2
         }
-    ";
+    "#;
 
     // Pass the string to the JIT, and it returns a raw pointer to machine code.
     let foo = jit.compile(&foo_code).unwrap_or_else(|msg| {
@@ -53,7 +53,7 @@ fn main() {
     // -------------------------------------------------------------------------//
 
     // Another example: Recursive fibonacci.
-    let recursive_fib_code = "\
+    let recursive_fib_code = r#"
         fn recursive_fib(n) -> (r) {
             r = if n == 0 {
                      0
@@ -65,7 +65,7 @@ fn main() {
                     }
                 }
         }
-    ";
+    "#;
 
     // Same as above.
     let recursive_fib = jit.compile(&recursive_fib_code).unwrap_or_else(|msg| {
@@ -80,7 +80,7 @@ fn main() {
     // -------------------------------------------------------------------------//
 
     // Another example: Iterative fibonacci.
-    let iterative_fib_code = "\
+    let iterative_fib_code = r#"
         fn iterative_fib(n) -> (r) {
             if n == 0 {
                 r = 0
@@ -96,7 +96,7 @@ fn main() {
                 }
             }
         }
-    ";
+    "#;
 
     // Same as above.
     let iterative_fib = jit.compile(&iterative_fib_code).unwrap_or_else(|msg| {
@@ -112,11 +112,11 @@ fn main() {
 
     // Let's say hello, by calling into libc. The puts function is resolved by
     // dlsym to the libc function, and the string &hello_string is defined below.
-    let hello_code = "\
+    let hello_code = r#"
         fn hello() -> (r) {
             puts(&hello_string)
         }
-    ";
+    "#;
 
     jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())
         .unwrap_or_else(|msg| {
