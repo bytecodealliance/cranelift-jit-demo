@@ -144,7 +144,7 @@ Our toy language only supports one type, so we start by
 [declaring that type](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L117)
 for convenience.
 
-We then we start translating the function by adding
+We then start translating the function by adding
 [the function parameters](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L121)
 and
 [return types](https://github.com/sunfishcode/simplejit-demo/blob/master/src/jit.rs#L125)
