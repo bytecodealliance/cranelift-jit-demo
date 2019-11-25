@@ -58,8 +58,7 @@ in the toy language:
         }
 ```
 
-The grammar for this toy language is defined in a grammar file
-[here](./src/grammar.rustpeg),
+The grammar for this toy language is defined [here](./src/frontend.rs#L23),
 and this demo uses the [peg](https://crates.io/crates/peg) parser generator library
 to generate actual parser code for it.
 
