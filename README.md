@@ -129,7 +129,7 @@ trait, which allows users to specify what underlying implementation they want to
 Once we've
 [initialized the JIT data structures](./src/jit.rs#L29),
 we then use our `JIT` to
-[compile](./jit.rs#L46)
+[compile](./src/jit.rs#L46)
 some functions.
 
 The `JIT`'s `compile` function takes a string containing a function in the
