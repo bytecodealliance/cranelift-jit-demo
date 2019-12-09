@@ -412,7 +412,7 @@ This writes a `test.o` file, which on an x86-64 ELF platform you can link with
 `cc test.o` and it produces an executable that calls the generated functions,
 including printing "hello world!".
 
-Another branch [here](https://github.com/bytecodealliance/simplejit-demo/tree/faerie-macho).
+Another branch [here](https://github.com/bytecodealliance/simplejit-demo/tree/faerie-macho)
 shows how to write Mach-O object files.
 
 Object files are written using the
