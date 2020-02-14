@@ -313,6 +313,7 @@ impl<'a> FunctionTranslator<'a> {
                 for expr in then_body {
                     then_return = self.translate_expr(expr);
                 }
+
                 // Jump to the merge block, passing it the block return value.
                 self.builder.ins().jump(merge_block, &[then_return]);
 
