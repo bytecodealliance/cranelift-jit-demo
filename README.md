@@ -159,7 +159,7 @@ automatically so that users don't have to worry about it.
 
 Next, we
 [start](./src/jit.rs#L132)
-an initial extended basic block (EBB), which is the entry block of the function, and
+an initial basic block (block), which is the entry block of the function, and
 the place where we'll insert some code.
 
  - A basic block is a sequence of IR instructions which have a single entry
@@ -169,35 +169,35 @@ the place where we'll insert some code.
  - Cranelift IR uses *extended* basic blocks, which are similar to basic blocks,
    except they may branch out from the middle.
 
-Cranelift's extended basic blocks can have parameters. These take the place of
+Cranelift's basic blocks can have parameters. These take the place of
 PHI functions in other IRs.
 
-Here's an example of an EBB, showing branches (`brif`) that may leave the EBB in
-the middle of the instruction sequence, and demonstrating some EBB parameters.
+Here's an example of a block, showing branches (`brif`) that may leave the block in
+the middle of the instruction sequence, and demonstrating some block parameters.
 
 ```
-ebb0(v0: i32, v1: i32, v2: i32, v507: i64):
+block0(v0: i32, v1: i32, v2: i32, v507: i64):
     v508 = iconst.i32 0
     v509 = iconst.i64 0
     v404 = ifcmp_imm v2, 0
-    brif eq v404, ebb8(v0, v1, v2)
+    brif eq v404, block8(v0, v1, v2)
     v10 = iadd_imm v2, -7
     v405 = ifcmp_imm v2, 7
-    brif ugt v405, ebb29(v10)
-    jump ebb29(v508)
+    brif ugt v405, block29(v10)
+    jump block29(v508)
 ```
 
 The `FunctionBuilder` library will take care of
-inserting EBB parameters automatically, so frontends that don't need to use
+inserting block parameters automatically, so frontends that don't need to use
 them directly generally don't need to worry about them, though one place they
 do come up is that incoming arguments to a function are represented as
-EBB parameters to the entry block. We must tell Cranelift to add the parameters,
+block parameters to the entry block. We must tell Cranelift to add the parameters,
 using
-[`append_ebb_params_for_function_params`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.append_ebb_params_for_function_params)
+[`append_block_params_for_function_params`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.append_block_params_for_function_params)
 like
 [so](./src/jit.rs#L135).
 
-The `FunctionBuilder` keeps track of a "current" EBB that new instructions are
+The `FunctionBuilder` keeps track of a "current" block that new instructions are
 to be inserted into; we next
 [inform](./src/jit.rs#L141)
 it of our new block, using
@@ -205,12 +205,12 @@ it of our new block, using
 so that we can start
 inserting instructions into it.
 
-The one major concept about EBBs is that the `FunctionBuilder` wants to know when
-all branches which could branch to an EBB have been seen, at which point it can
-*seal* the EBB, which allows it to perform SSA construction. All EBBs must be
+The one major concept about blocks is that the `FunctionBuilder` wants to know when
+all branches which could branch to a block have been seen, at which point it can
+*seal* the block, which allows it to perform SSA construction. All blocks must be
 sealed by the end of the function. We
 [seal](./src/jit.rs#L144)
-an EBB with
+a block with
 [`seal_block`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
 
 Next, our toy language doesn't have explicit variable declarations, so we walk the
@@ -240,7 +240,7 @@ The first part is just extracting the integer value from the AST. The next
 line is the builder line:
 
  - The `.ins()` returns an "insertion object", which allows inserting an
-   instruction at the end of the currently active EBB.
+   instruction at the end of the currently active block.
  - `iconst` is the name of the builder routine for creating
    [integer constants](https://cranelift.readthedocs.io/en/latest/langref.html#inst-iconst)
    in Cranelift. Every instruction in the IR can be created directly through such
@@ -282,9 +282,9 @@ Next, let's dive into
 expressions. In order to demonstrate explicit SSA construction, this demo gives
 if-else expressions return values. The way this looks in Cranelift is that
 the true and false arms of the if-else both have branches to a common merge point,
-and they each pass their "return value" as an EBB parameter to the merge point.
+and they each pass their "return value" as a block parameter to the merge point.
 
-Note that we seal the EBBs we create once we know we'll have no more predecessors,
+Note that we seal the blocks we create once we know we'll have no more predecessors,
 which is something that a typical AST makes it easy to know.
 
 Putting it all together, here's the Cranelift IR for the function named
@@ -293,29 +293,29 @@ in the demo program, which contains multiple ifs:
 
 ```
 function u0:0(i64, i64) -> i64 system_v {
-ebb0(v0: i64, v1: i64):
+block0(v0: i64, v1: i64):
     v2 = iconst.i64 0
-    brz v0, ebb1
+    brz v0, block1
     v4 = iconst.i64 0
-    brz v1, ebb3
+    brz v1, block3
     v6 = iconst.i64 0
     v7 = iconst.i64 30
-    jump ebb4(v7)
+    jump block4(v7)
 
-ebb3:
+block3:
     v8 = iconst.i64 0
     v9 = iconst.i64 40
-    jump ebb4(v9)
+    jump block4(v9)
 
-ebb4(v5: i64):
-    jump ebb2(v5)
+block4(v5: i64):
+    jump block2(v5)
 
-ebb1:
+block1:
     v10 = iconst.i64 0
     v11 = iconst.i64 50
-    jump ebb2(v11)
+    jump block2(v11)
 
-ebb2(v3: i64):
+block2(v3: i64):
     v12 = iconst.i64 2
     v13 = iadd v3, v12
     return v13
@@ -330,39 +330,39 @@ in the demo program, which contains a while loop:
 
 ```
 function u0:0(i64) -> i64 system_v {
-ebb0(v0: i64):
+block0(v0: i64):
     v1 = iconst.i64 0
     v2 = iconst.i64 0
     v3 = icmp eq v0, v2
     v4 = bint.i64 v3
-    brz v4, ebb1
+    brz v4, block1
     v6 = iconst.i64 0
     v7 = iconst.i64 0
-    jump ebb2(v7, v7)
+    jump block2(v7, v7)
 
-ebb1:
+block1:
     v8 = iconst.i64 0
     v9 = iconst.i64 1
     v10 = isub.i64 v0, v9
     v11 = iconst.i64 0
     v12 = iconst.i64 1
-    jump ebb3(v10, v12, v11)
+    jump block3(v10, v12, v11)
 
-ebb3(v13: i64, v17: i64, v18: i64):
+block3(v13: i64, v17: i64, v18: i64):
     v14 = iconst.i64 0
     v15 = icmp ne v13, v14
     v16 = bint.i64 v15
-    brz v16, ebb4
+    brz v16, block4
     v19 = iadd v17, v18
     v20 = iconst.i64 1
     v21 = isub v13, v20
-    jump ebb3(v21, v19, v17)
+    jump block3(v21, v19, v17)
 
-ebb4:
+block4:
     v22 = iconst.i64 0
-    jump ebb2(v22, v17)
+    jump block2(v22, v17)
 
-ebb2(v5: i64, v23: i64):
+block2(v5: i64, v23: i64):
     return v23
 }
 ```
