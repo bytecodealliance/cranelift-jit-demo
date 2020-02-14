@@ -166,21 +166,17 @@ the place where we'll insert some code.
    point, and no branches until the very end, so execution always starts at the
    top and proceeds straight through to the end.
 
- - Cranelift IR uses *extended* basic blocks, which are similar to basic blocks,
-   except they may branch out from the middle.
-
 Cranelift's basic blocks can have parameters. These take the place of
 PHI functions in other IRs.
 
-Here's an example of a block, showing branches (`brif`) that may leave the block in
-the middle of the instruction sequence, and demonstrating some block parameters.
+Here's an example of a block, showing branches (`brif` and `jump`) that are at the end of the block,
+and demonstrating some block parameters.
 
 ```
 block0(v0: i32, v1: i32, v2: i32, v507: i64):
     v508 = iconst.i32 0
     v509 = iconst.i64 0
     v404 = ifcmp_imm v2, 0
-    brif eq v404, block8(v0, v1, v2)
     v10 = iadd_imm v2, -7
     v405 = ifcmp_imm v2, 7
     brif ugt v405, block29(v10)
@@ -295,27 +291,33 @@ in the demo program, which contains multiple ifs:
 function u0:0(i64, i64) -> i64 system_v {
 block0(v0: i64, v1: i64):
     v2 = iconst.i64 0
-    brz v0, block1
-    v4 = iconst.i64 0
-    brz v1, block3
-    v6 = iconst.i64 0
-    v7 = iconst.i64 30
-    jump block4(v7)
-
-block3:
-    v8 = iconst.i64 0
-    v9 = iconst.i64 40
-    jump block4(v9)
-
-block4(v5: i64):
-    jump block2(v5)
+    brz v0, block2
+    jump block1
 
 block1:
+    v4 = iconst.i64 0
+    brz.i64 v1, block5
+    jump block4
+
+block4:
+    v6 = iconst.i64 0
+    v7 = iconst.i64 30
+    jump block6(v7)
+
+block5:
+    v8 = iconst.i64 0
+    v9 = iconst.i64 40
+    jump block6(v9)
+
+block6(v5: i64):
+    jump block3(v5)
+
+block2:
     v10 = iconst.i64 0
     v11 = iconst.i64 50
-    jump block2(v11)
+    jump block3(v11)
 
-block2(v3: i64):
+block3(v3: i64):
     v12 = iconst.i64 2
     v13 = iadd v3, v12
     return v13
@@ -335,34 +337,40 @@ block0(v0: i64):
     v2 = iconst.i64 0
     v3 = icmp eq v0, v2
     v4 = bint.i64 v3
-    brz v4, block1
-    v6 = iconst.i64 0
-    v7 = iconst.i64 0
-    jump block2(v7, v7)
+    brz v4, block2
+    jump block1
 
 block1:
+    v6 = iconst.i64 0
+    v7 = iconst.i64 0
+    jump block3(v7, v7)
+
+block2:
     v8 = iconst.i64 0
     v9 = iconst.i64 1
     v10 = isub.i64 v0, v9
     v11 = iconst.i64 0
     v12 = iconst.i64 1
-    jump block3(v10, v12, v11)
+    jump block4(v10, v12, v11)
 
-block3(v13: i64, v17: i64, v18: i64):
+block4(v13: i64, v17: i64, v18: i64):
     v14 = iconst.i64 0
     v15 = icmp ne v13, v14
     v16 = bint.i64 v15
-    brz v16, block4
-    v19 = iadd v17, v18
+    brz v16, block6
+    jump block5
+
+block5:
+    v19 = iadd.i64 v17, v18
     v20 = iconst.i64 1
-    v21 = isub v13, v20
-    jump block3(v21, v19, v17)
+    v21 = isub.i64 v13, v20
+    jump block4(v21, v19, v17)
 
-block4:
+block6:
     v22 = iconst.i64 0
-    jump block2(v22, v17)
+    jump block3(v22, v17)
 
-block2(v5: i64, v23: i64):
+block3(v5: i64, v23: i64):
     return v23
 }
 ```
