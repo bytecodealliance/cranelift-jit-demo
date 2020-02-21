@@ -116,14 +116,14 @@ Both functions and data objects can contain references to other functions and
 data objects. Cranelift is designed to allow the low-level parts operate on each
 function and data object independently, so each function and data object maintains
 its own individual namespace of imported names. The
-[`Module`](https://docs.rs/cranelift-module/0.25.0/cranelift_module/struct.Module.html)
+[`Module`](https://docs.rs/cranelift-module/latest/cranelift_module/struct.Module.html)
 struct takes care of maintaining a set of declarations for use across multiple
 functions and data objects.
 
 These concepts are sufficiently general that they're applicable to JITing as
 well as native object files (more discussion below!), and `Module` provides an
 interface which abstracts over both. It is parameterized with a
-[`Backend`](https://docs.rs/cranelift-module/0.25.0/cranelift_module/trait.Backend.html)
+[`Backend`](https://docs.rs/cranelift-module/latest/cranelift_module/trait.Backend.html)
 trait, which allows users to specify what underlying implementation they want to use.
 
 Once we've
@@ -152,7 +152,7 @@ to the Cranelift function signature.
 Then we
 [create](./src/jit.rs#L129)
 a
-[FunctionBuilder](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html)
+[FunctionBuilder](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html)
 which is a utility for building up the contents of a Cranelift IR function. As we'll
 see below, `FunctionBuilder` includes functionality for constructing SSA form
 automatically so that users don't have to worry about it.
@@ -189,7 +189,7 @@ them directly generally don't need to worry about them, though one place they
 do come up is that incoming arguments to a function are represented as
 block parameters to the entry block. We must tell Cranelift to add the parameters,
 using
-[`append_block_params_for_function_params`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.append_block_params_for_function_params)
+[`append_block_params_for_function_params`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.append_block_params_for_function_params)
 like
 [so](./src/jit.rs#L135).
 
@@ -197,7 +197,7 @@ The `FunctionBuilder` keeps track of a "current" block that new instructions are
 to be inserted into; we next
 [inform](./src/jit.rs#L141)
 it of our new block, using
-[`switch_to_block`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
+[`switch_to_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
 so that we can start
 inserting instructions into it.
 
@@ -207,7 +207,7 @@ all branches which could branch to a block have been seen, at which point it can
 sealed by the end of the function. We
 [seal](./src/jit.rs#L144)
 a block with
-[`seal_block`](https://docs.rs/cranelift-frontend/0.25.0/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
+[`seal_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
 
 Next, our toy language doesn't have explicit variable declarations, so we walk the
 AST to discover all the variables, so that we can
