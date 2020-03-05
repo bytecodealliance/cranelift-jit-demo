@@ -413,10 +413,10 @@ And with all that, we can say "hello world!".
 
 ### Native object files
 
-Because of the `Module` abstraction, this demo can be adapted to write out an ELF
+Because of the `Module` abstraction, this demo can be adapted to write out a Mach-O
 .o file rather than JITing the code to memory with only minor changes, and I've done
 so in a branch [here](https://github.com/bytecodealliance/simplejit-demo/tree/faerie).
-This writes a `test.o` file, which on an x86-64 ELF platform you can link with
+This writes a `test.o` file, which on an x86-64 Mach-O platform you can link with
 `cc test.o` and it produces an executable that calls the generated functions,
 including printing "hello world!".
 
