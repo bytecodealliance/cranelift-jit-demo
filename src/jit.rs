@@ -130,26 +130,26 @@ impl JIT {
         let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 
         // Create the entry block, to start emitting code in.
-        let entry_ebb = builder.create_ebb();
+        let entry_block = builder.create_block();
 
         // Since this is the entry block, add block parameters corresponding to
         // the function's parameters.
         //
         // TODO: Streamline the API here.
-        builder.append_ebb_params_for_function_params(entry_ebb);
+        builder.append_block_params_for_function_params(entry_block);
 
         // Tell the builder to emit code in this block.
-        builder.switch_to_block(entry_ebb);
+        builder.switch_to_block(entry_block);
 
         // And, tell the builder that this block will have no further
         // predecessors. Since it's the entry block, it won't have any
         // predecessors.
-        builder.seal_block(entry_ebb);
+        builder.seal_block(entry_block);
 
         // The toy language allows variables to be declared implicitly.
         // Walk the AST and declare all implicitly-declared variables.
         let variables =
-            declare_variables(int, &mut builder, &params, &the_return, &stmts, entry_ebb);
+            declare_variables(int, &mut builder, &params, &the_return, &stmts, entry_block);
 
         // Now translate the statements of the function body.
         let mut trans = FunctionTranslator {
@@ -291,19 +291,24 @@ impl<'a> FunctionTranslator<'a> {
             Expr::IfElse(condition, then_body, else_body) => {
                 let condition_value = self.translate_expr(*condition);
 
-                let else_block = self.builder.create_ebb();
-                let merge_block = self.builder.create_ebb();
+                let then_block = self.builder.create_block();
+                let else_block = self.builder.create_block();
+                let merge_block = self.builder.create_block();
 
                 // If-else constructs in the toy language have a return value.
                 // In traditional SSA form, this would produce a PHI between
                 // the then and else bodies. Cranelift uses block parameters,
                 // so set up a parameter in the merge block, and we'll pass
                 // the return values to it from the branches.
-                self.builder.append_ebb_param(merge_block, self.int);
+                self.builder.append_block_param(merge_block, self.int);
 
                 // Test the if condition and conditionally branch.
                 self.builder.ins().brz(condition_value, else_block, &[]);
+                // Fall through to then block.
+                self.builder.ins().jump(then_block, &[]);
 
+                self.builder.switch_to_block(then_block);
+                self.builder.seal_block(then_block);
                 let mut then_return = self.builder.ins().iconst(self.int, 0);
                 for expr in then_body {
                     then_return = self.translate_expr(expr);
@@ -330,19 +335,25 @@ impl<'a> FunctionTranslator<'a> {
 
                 // Read the value of the if-else by reading the merge block
                 // parameter.
-                let phi = self.builder.ebb_params(merge_block)[0];
+                let phi = self.builder.block_params(merge_block)[0];
 
                 phi
             }
 
             Expr::WhileLoop(condition, loop_body) => {
-                let header_block = self.builder.create_ebb();
-                let exit_block = self.builder.create_ebb();
+                let header_block = self.builder.create_block();
+                let body_block = self.builder.create_block();
+                let exit_block = self.builder.create_block();
+
                 self.builder.ins().jump(header_block, &[]);
                 self.builder.switch_to_block(header_block);
 
                 let condition_value = self.translate_expr(*condition);
                 self.builder.ins().brz(condition_value, exit_block, &[]);
+                self.builder.ins().jump(body_block, &[]);
+
+                self.builder.switch_to_block(body_block);
+                self.builder.seal_block(body_block);
 
                 for expr in loop_body {
                     self.translate_expr(expr);
@@ -410,7 +421,7 @@ fn declare_variables(
     params: &[String],
     the_return: &str,
     stmts: &[Expr],
-    entry_ebb: Ebb,
+    entry_block: Block,
 ) -> HashMap<String, Variable> {
     let mut variables = HashMap::new();
     let mut index = 0;
@@ -418,7 +429,7 @@ fn declare_variables(
     for (i, name) in params.iter().enumerate() {
         // TODO: cranelift_frontend should really have an API to make it easy to set
         // up param variables.
-        let val = builder.ebb_params(entry_ebb)[i];
+        let val = builder.block_params(entry_block)[i];
         let var = declare_variable(int, builder, &mut variables, &mut index, name);
         builder.def_var(var, val);
     }
