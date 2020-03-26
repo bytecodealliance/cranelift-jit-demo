@@ -28,11 +28,6 @@ pub struct JIT {
 impl JIT {
     /// Create a new `JIT` instance.
     pub fn new() -> Self {
-        // Windows calling conventions are not supported yet.
-        if cfg!(windows) {
-            unimplemented!();
-        }
-
         let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
         let module = Module::new(builder);
         Self {
