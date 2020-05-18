@@ -65,7 +65,7 @@ impl JIT {
         // defined. For this toy demo for now, we'll just finalize the function
         // below.
         self.module
-            .define_function(id, &mut self.ctx)
+            .define_function(id, &mut self.ctx, &mut codegen::binemit::NullTrapSink {})
             .map_err(|e| e.to_string())?;
 
         // Now that compilation is finished, we can clear out the context state.
@@ -89,7 +89,7 @@ impl JIT {
         self.data_ctx.define(contents.into_boxed_slice());
         let id = self
             .module
-            .declare_data(name, Linkage::Export, true, None)
+            .declare_data(name, Linkage::Export, true, false, None)
             .map_err(|e| e.to_string())?;
 
         self.module
@@ -399,7 +399,7 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_global_data_addr(&mut self, name: String) -> Value {
         let sym = self
             .module
-            .declare_data(&name, Linkage::Export, true, None)
+            .declare_data(&name, Linkage::Export, true, false, None)
             .expect("problem declaring data object");
         let local_id = self
             .module
