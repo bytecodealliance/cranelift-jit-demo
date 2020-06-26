@@ -3,7 +3,7 @@ Hello!
 This is a simple demo that JIT-compiles a toy language, using Cranelift.
 
 It uses the new SimpleJIT interface in development
-[here](https://github.com/bytecodealliance/cranelift/tree/master/cranelift-simplejit). SimpleJIT takes care
+[here](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/simplejit). SimpleJIT takes care
 of managing a symbol table, allocating memory, and performing relocations, offering
 a relatively simple API.
 
