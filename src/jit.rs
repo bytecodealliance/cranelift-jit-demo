@@ -121,7 +121,7 @@ impl JIT {
         // Cranelift is designed to support more.
         self.ctx.func.signature.returns.push(AbiParam::new(int));
 
-        // Create the builder to builder a function.
+        // Create the builder to build a function.
         let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 
         // Create the entry block, to start emitting code in.
