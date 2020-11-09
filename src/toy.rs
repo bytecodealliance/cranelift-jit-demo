@@ -8,6 +8,62 @@ use std::mem;
 mod frontend;
 mod jit;
 
+fn main() {
+    run_toy().unwrap();
+}
+
+fn run_toy() -> Result<(), String> {
+    // Create the JIT instance, which manages all generated functions and data.
+    let mut jit = jit::JIT::new();
+    println!("the answer is: {}", run_foo(&mut jit)?);
+    println!(
+        "recursive_fib(10) = {}",
+        run_recursive_fib_code(&mut jit, 10)?
+    );
+    println!(
+        "iterative_fib(10) = {}",
+        run_iterative_fib_code(&mut jit, 10)?
+    );
+    run_hello(&mut jit)?;
+    Ok(())
+}
+
+fn run_foo(jit: &mut jit::JIT) -> Result<isize, String> {
+    unsafe { run_code(jit, FOO_CODE, (1, 0)) }
+}
+
+fn run_recursive_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
+    unsafe { run_code(jit, RECURSIVE_FIB_CODE, input) }
+}
+
+fn run_iterative_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
+    unsafe { run_code(jit, ITERATIVE_FIB_CODE, input) }
+}
+
+fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
+    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
+    unsafe { run_code(jit, HELLO_CODE, ()) }
+}
+
+/// Executes the given code using the cranelift JIT compiler.
+///
+/// Feeds the given input into the JIT compiled function and returns the resulting output.
+///
+/// # Safety
+///
+/// This function is unsafe since it relies on the caller to provide it with the correct
+/// input and output types. Using incorrect types at this point may corrupt the program's state.
+unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
+    // Pass the string to the JIT, and it returns a raw pointer to machine code.
+    let code_ptr = jit.compile(code)?;
+    // Cast the raw pointer to a typed function pointer. This is unsafe, because
+    // this is the critical point where you have to trust that the generated code
+    // is safe to be called.
+    let code_fn = mem::transmute::<_, fn(I) -> O>(code_ptr);
+    // And now we can call it!
+    Ok(code_fn(input))
+}
+
 // A small test function.
 //
 // The `(c)` declares a return variable; the function returns whatever value
@@ -70,59 +126,3 @@ fn hello() -> (r) {
     puts(&hello_string)
 }
 "#;
-
-fn main() {
-    run_toy().unwrap();
-}
-
-/// Executes the given code using the cranelift JIT compiler.
-///
-/// Feeds the given input into the JIT compiled function and returns the resulting output.
-///
-/// # Safety
-///
-/// This function is unsafe since it relies on the caller to provide it with the correct
-/// input and output types. Using incorrect types at this point may corrupt the program's state.
-unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
-    // Pass the string to the JIT, and it returns a raw pointer to machine code.
-    let code_ptr = jit.compile(code)?;
-    // Cast the raw pointer to a typed function pointer. This is unsafe, because
-    // this is the critical point where you have to trust that the generated code
-    // is safe to be called.
-    let code_fn = mem::transmute::<_, fn(I) -> O>(code_ptr);
-    // And now we can call it!
-    Ok(code_fn(input))
-}
-
-fn run_foo(jit: &mut jit::JIT) -> Result<isize, String> {
-    unsafe { run_code(jit, FOO_CODE, (1, 0)) }
-}
-
-fn run_recursive_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
-    unsafe { run_code(jit, RECURSIVE_FIB_CODE, input) }
-}
-
-fn run_iterative_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
-    unsafe { run_code(jit, ITERATIVE_FIB_CODE, input) }
-}
-
-fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
-    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
-    unsafe { run_code(jit, HELLO_CODE, ()) }
-}
-
-fn run_toy() -> Result<(), String> {
-    // Create the JIT instance, which manages all generated functions and data.
-    let mut jit = jit::JIT::new();
-    println!("the answer is: {}", run_foo(&mut jit)?);
-    println!(
-        "recursive_fib(10) = {}",
-        run_recursive_fib_code(&mut jit, 10)?
-    );
-    println!(
-        "iterative_fib(10) = {}",
-        run_iterative_fib_code(&mut jit, 10)?
-    );
-    run_hello(&mut jit)?;
-    Ok(())
-}
