@@ -75,13 +75,21 @@ fn main() {
     run_toy().unwrap();
 }
 
-fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
+/// Executes the given code using the cranelift JIT compiler.
+///
+/// Feeds the given input into the JIT compiled function and returns the resulting output.
+///
+/// # Safety
+///
+/// This function is unsafe since it relies on the caller to provide it with the correct
+/// input and output types. Using incorrect types at this point may corrupt the program's state.
+unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
     // Pass the string to the JIT, and it returns a raw pointer to machine code.
     let code_ptr = jit.compile(code)?;
     // Cast the raw pointer to a typed function pointer. This is unsafe, because
     // this is the critical point where you have to trust that the generated code
     // is safe to be called.
-    let code_fn = unsafe { mem::transmute::<_, fn(I) -> O>(code_ptr) };
+    let code_fn = mem::transmute::<_, fn(I) -> O>(code_ptr);
     // And now we can call it!
     Ok(code_fn(input))
 }
@@ -90,21 +98,21 @@ fn run_toy() -> Result<(), String> {
     // Create the JIT instance, which manages all generated functions and data.
     let mut jit = jit::JIT::new();
 
-    let result: isize = run_code(&mut jit, FOO_CODE, (1, 0))?;
+    let result: isize = unsafe { run_code(&mut jit, FOO_CODE, (1, 0))? };
 
     // And now we can call it!
     println!("the answer is: {}", result);
 
     // -------------------------------------------------------------------------//
 
-    let result: isize = run_code(&mut jit, RECURSIVE_FIB_CODE, 10)?;
+    let result: isize = unsafe { run_code(&mut jit, RECURSIVE_FIB_CODE, 10)? };
 
     // And we can now call it!
     println!("recursive_fib(10) = {}", result);
 
     // -------------------------------------------------------------------------//
 
-    let result: isize = run_code(&mut jit, ITERATIVE_FIB_CODE, 10)?;
+    let result: isize = unsafe { run_code(&mut jit, ITERATIVE_FIB_CODE, 10)? };
 
     // And we can now call it!
     println!("iterative_fib(10) = {}", result);
@@ -112,7 +120,7 @@ fn run_toy() -> Result<(), String> {
     // -------------------------------------------------------------------------//
 
     jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
-    let _: isize = run_code(&mut jit, HELLO_CODE, ())?;
+    let _: isize = unsafe { run_code(&mut jit, HELLO_CODE, ())? };
 
     Ok(())
 }
