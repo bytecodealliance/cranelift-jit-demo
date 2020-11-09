@@ -94,33 +94,35 @@ unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, 
     Ok(code_fn(input))
 }
 
+fn run_foo(jit: &mut jit::JIT) -> Result<isize, String> {
+    unsafe { run_code(jit, FOO_CODE, (1, 0)) }
+}
+
+fn run_recursive_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
+    unsafe { run_code(jit, RECURSIVE_FIB_CODE, input) }
+}
+
+fn run_iterative_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
+    unsafe { run_code(jit, ITERATIVE_FIB_CODE, input) }
+}
+
+fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
+    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
+    unsafe { run_code(jit, HELLO_CODE, ()) }
+}
+
 fn run_toy() -> Result<(), String> {
     // Create the JIT instance, which manages all generated functions and data.
     let mut jit = jit::JIT::new();
-
-    let result: isize = unsafe { run_code(&mut jit, FOO_CODE, (1, 0))? };
-
-    // And now we can call it!
-    println!("the answer is: {}", result);
-
-    // -------------------------------------------------------------------------//
-
-    let result: isize = unsafe { run_code(&mut jit, RECURSIVE_FIB_CODE, 10)? };
-
-    // And we can now call it!
-    println!("recursive_fib(10) = {}", result);
-
-    // -------------------------------------------------------------------------//
-
-    let result: isize = unsafe { run_code(&mut jit, ITERATIVE_FIB_CODE, 10)? };
-
-    // And we can now call it!
-    println!("iterative_fib(10) = {}", result);
-
-    // -------------------------------------------------------------------------//
-
-    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
-    let _: isize = unsafe { run_code(&mut jit, HELLO_CODE, ())? };
-
+    println!("the answer is: {}", run_foo(&mut jit)?);
+    println!(
+        "recursive_fib(10) = {}",
+        run_recursive_fib_code(&mut jit, 10)?
+    );
+    println!(
+        "iterative_fib(10) = {}",
+        run_iterative_fib_code(&mut jit, 10)?
+    );
+    run_hello(&mut jit)?;
     Ok(())
 }
