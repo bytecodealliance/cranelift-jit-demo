@@ -7,10 +7,6 @@ repository = "https://github.com/CraneStation/simplejit-demo"
 description = "Toy language implemented using cranelift-simplejit"
 edition = "2018"
 
-[[bin]]
-name = "toy"
-path = "examples/toy.rs"
-
 [dependencies]
 cranelift = "0.68.0"
 cranelift-module = "0.68.0"
