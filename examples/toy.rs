@@ -1,18 +1,7 @@
-extern crate cranelift;
-extern crate cranelift_module;
-extern crate cranelift_simplejit;
-extern crate peg;
+use simplejit_demo::jit;
+use core::mem;
 
-use std::mem;
-
-mod frontend;
-mod jit;
-
-fn main() {
-    run_toy().unwrap();
-}
-
-fn run_toy() -> Result<(), String> {
+fn main() -> Result<(), String> {
     // Create the JIT instance, which manages all generated functions and data.
     let mut jit = jit::JIT::new();
     println!("the answer is: {}", run_foo(&mut jit)?);
