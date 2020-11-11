@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use cranelift::prelude::*;
 use cranelift_module::{DataContext, Linkage, Module};
-use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
+use cranelift_simplejit::{SimpleJITModule, SimpleJITBuilder};
 use frontend::*;
 use std::slice;
 
@@ -22,14 +22,14 @@ pub struct JIT {
 
     /// The module, with the simplejit backend, which manages the JIT'd
     /// functions.
-    module: Module<SimpleJITBackend>,
+    module: SimpleJITModule,
 }
 
 impl JIT {
     /// Create a new `JIT` instance.
     pub fn new() -> Self {
         let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
-        let module = Module::new(builder);
+        let module = SimpleJITModule::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
@@ -89,7 +89,7 @@ impl JIT {
         self.data_ctx.define(contents.into_boxed_slice());
         let id = self
             .module
-            .declare_data(name, Linkage::Export, true, false, None)
+            .declare_data(name, Linkage::Export, true, false)
             .map_err(|e| e.to_string())?;
 
         self.module
@@ -178,7 +178,7 @@ struct FunctionTranslator<'a> {
     int: types::Type,
     builder: FunctionBuilder<'a>,
     variables: HashMap<String, Variable>,
-    module: &'a mut Module<SimpleJITBackend>,
+    module: &'a mut SimpleJITModule,
 }
 
 impl<'a> FunctionTranslator<'a> {
@@ -374,7 +374,7 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_global_data_addr(&mut self, name: String) -> Value {
         let sym = self
             .module
-            .declare_data(&name, Linkage::Export, true, false, None)
+            .declare_data(&name, Linkage::Export, true, false)
             .expect("problem declaring data object");
         let local_id = self
             .module
