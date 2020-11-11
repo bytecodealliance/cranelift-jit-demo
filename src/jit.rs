@@ -24,9 +24,8 @@ pub struct JIT {
     module: SimpleJITModule,
 }
 
-impl JIT {
-    /// Create a new `JIT` instance.
-    pub fn new() -> Self {
+impl Default for JIT {
+    fn default() -> Self {
         let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
         let module = SimpleJITModule::new(builder);
         Self {
@@ -36,7 +35,9 @@ impl JIT {
             module,
         }
     }
+}
 
+impl JIT {
     /// Compile a string in the toy language into machine code.
     pub fn compile(&mut self, input: &str) -> Result<*const u8, String> {
         // First, parse the string, producing AST nodes.

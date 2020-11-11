@@ -3,7 +3,7 @@ use core::mem;
 
 fn main() -> Result<(), String> {
     // Create the JIT instance, which manages all generated functions and data.
-    let mut jit = jit::JIT::new();
+    let mut jit = jit::JIT::default();
     println!("the answer is: {}", run_foo(&mut jit)?);
     println!(
         "recursive_fib(10) = {}",
