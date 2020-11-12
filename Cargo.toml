@@ -5,13 +5,10 @@ authors = ["The Cranelift Project Developers"]
 license = "Apache-2.0 WITH LLVM-exception"
 repository = "https://github.com/CraneStation/simplejit-demo"
 description = "Toy language implemented using cranelift-simplejit"
-
-[[bin]]
-name = "toy"
-path = "src/toy.rs"
+edition = "2018"
 
 [dependencies]
-cranelift = "0.66.0"
-cranelift-module = "0.66.0"
-cranelift-simplejit = "0.66.0"
+cranelift = "0.68.0"
+cranelift-module = "0.68.0"
+cranelift-simplejit = "0.68.0"
 peg = "0.6"
