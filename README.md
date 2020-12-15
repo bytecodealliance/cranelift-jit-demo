@@ -3,7 +3,7 @@ Hello!
 This is a simple demo that JIT-compiles a toy language, using Cranelift.
 
 It uses the new SimpleJIT interface in development
-[here](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/simplejit). SimpleJIT takes care
+[here](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/jit). SimpleJIT takes care
 of managing a symbol table, allocating memory, and performing relocations, offering
 a relatively simple API.
 
@@ -34,13 +34,13 @@ is being designed to support many other kinds of platforms in the future.
 
 ### A walkthrough
 
-First, let's take a quick look at the toy language in use. It's a very
-simple language, in which all variables have type `isize`. (Cranelift does have
-full support for other integer and floating-point types, so this is just to
-keep the toy language simple).
+First, let's take a quick look at the toy language in use. It's a very simple
+language, in which all variables have type `isize`. (Cranelift does have full
+support for other integer and floating-point types, so this is just to keep the
+toy language simple).
 
 For a quick flavor, here's our
-[first example](./src/toy.rs#L21)
+[first example](./src/bin/toy.rs#L63)
 in the toy language:
 
 ```
@@ -58,11 +58,12 @@ in the toy language:
         }
 ```
 
-The grammar for this toy language is defined [here](./src/frontend.rs#L23),
-and this demo uses the [peg](https://crates.io/crates/peg) parser generator library
+The grammar for this toy language is defined [here](./src/frontend.rs#L23), and
+this demo uses the [peg](https://crates.io/crates/peg) parser generator library
 to generate actual parser code for it.
 
 The output of parsing is a [custom AST type](./src/frontend.rs#L1):
+
 ```rust
 pub enum Expr {
     Literal(String),
@@ -85,19 +86,17 @@ pub enum Expr {
 }
 ```
 
-It's pretty minimal and straightforward. The `IfElse` can return a value, to show
-how that's done in Cranelift (see below).
+It's pretty minimal and straightforward. The `IfElse` can return a value, to
+show how that's done in Cranelift (see below).
 
-The
-[first thing we do](./src/toy.rs#L13)
-is create an instance of our `JIT`:
+The [first thing we do](./src/bin/toy.rs#L6) is create an instance of our `JIT`:
+
 ```rust
 let mut jit = jit::JIT::new();
 ```
 
-The `JIT` class is defined
-[here](./src/jit.rs#L10)
-and contains several fields:
+The `JIT` class is defined [here](./src/jit.rs#L9) and contains several fields:
+
  - `builder_context` - Cranelift uses this to reuse dynamic allocations between
    compiling multiple functions.
  - `ctx` - This is the main `Context` object for compiling functions.
@@ -116,61 +115,46 @@ Both functions and data objects can contain references to other functions and
 data objects. Cranelift is designed to allow the low-level parts operate on each
 function and data object independently, so each function and data object maintains
 its own individual namespace of imported names. The
-[`Module`](https://docs.rs/cranelift-module/latest/cranelift_module/struct.Module.html)
+[`Module`](https://docs.rs/cranelift-module/0.6.8/cranelift_module/trait.Module.html)
 struct takes care of maintaining a set of declarations for use across multiple
 functions and data objects.
 
 These concepts are sufficiently general that they're applicable to JITing as
 well as native object files (more discussion below!), and `Module` provides an
-interface which abstracts over both. It is parameterized with a
-[`Backend`](https://docs.rs/cranelift-module/latest/cranelift_module/trait.Backend.html)
-trait, which allows users to specify what underlying implementation they want to use.
+interface which abstracts over both.
 
-Once we've
-[initialized the JIT data structures](./src/jit.rs#L29),
-we then use our `JIT` to
-[compile](./src/jit.rs#L46)
-some functions.
+Once we've [initialized the JIT data structures](./src/jit.rs#L29), we then use
+our `JIT` to [compile](./src/jit.rs#L42) some functions.
 
-The `JIT`'s `compile` function takes a string containing a function in the
-toy language. It
-[parses](./src/jit.rs#L48)
-the string into an AST, and then
-[translates](./src/jit.rs#L52)
-the AST into Cranelift IR.
+The `JIT`'s `compile` function takes a string containing a function in the toy
+language. It [parses](./src/jit.rs#L44) the string into an AST, and then
+[translates](./src/jit.rs#L48) the AST into Cranelift IR.
 
-Our toy language only supports one type, so we start by
-[declaring that type](./src/jit.rs#L117)
-for convenience.
+Our toy language only supports one type, so we start by [declaring that
+type](./src/jit.rs#L133) for convenience.
 
-We then start translating the function by adding
-[the function parameters](./src/jit.rs#L121)
-and
-[return types](./src/jit.rs#L125)
-to the Cranelift function signature.
+We then start translating the function by adding [the function
+parameters](./src/jit.rs#L115) and [return types](./src/jit.rs#L121) to the
+Cranelift function signature.
 
-Then we
-[create](./src/jit.rs#L129)
-a
+Then we [create](./src/jit.rs#L124) a
 [FunctionBuilder](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html)
-which is a utility for building up the contents of a Cranelift IR function. As we'll
-see below, `FunctionBuilder` includes functionality for constructing SSA form
-automatically so that users don't have to worry about it.
+which is a utility for building up the contents of a Cranelift IR function. As
+we'll see below, `FunctionBuilder` includes functionality for constructing SSA
+form automatically so that users don't have to worry about it.
 
-Next, we
-[start](./src/jit.rs#L132)
-an initial basic block (block), which is the entry block of the function, and
-the place where we'll insert some code.
+Next, we [start](./src/jit.rs#L127) an initial basic block (block), which is the
+entry block of the function, and the place where we'll insert some code.
 
  - A basic block is a sequence of IR instructions which have a single entry
    point, and no branches until the very end, so execution always starts at the
    top and proceeds straight through to the end.
 
-Cranelift's basic blocks can have parameters. These take the place of
-PHI functions in other IRs.
+Cranelift's basic blocks can have parameters. These take the place of PHI
+functions in other IRs.
 
-Here's an example of a block, showing branches (`brif` and `jump`) that are at the end of the block,
-and demonstrating some block parameters.
+Here's an example of a block, showing branches (`brif` and `jump`) that are at
+the end of the block, and demonstrating some block parameters.
 
 ```
 block0(v0: i32, v1: i32, v2: i32, v507: i64):
@@ -183,47 +167,43 @@ block0(v0: i32, v1: i32, v2: i32, v507: i64):
     jump block29(v508)
 ```
 
-The `FunctionBuilder` library will take care of
-inserting block parameters automatically, so frontends that don't need to use
-them directly generally don't need to worry about them, though one place they
-do come up is that incoming arguments to a function are represented as
-block parameters to the entry block. We must tell Cranelift to add the parameters,
-using
+The `FunctionBuilder` library will take care of inserting block parameters
+automatically, so frontends that don't need to use them directly generally don't
+need to worry about them, though one place they do come up is that incoming
+arguments to a function are represented as block parameters to the entry
+block. We must tell Cranelift to add the parameters, using
 [`append_block_params_for_function_params`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.append_block_params_for_function_params)
-like
-[so](./src/jit.rs#L135).
+like [so](./src/jit.rs#L133).
 
 The `FunctionBuilder` keeps track of a "current" block that new instructions are
-to be inserted into; we next
-[inform](./src/jit.rs#L141)
-it of our new block, using
+to be inserted into; we next [inform](./src/jit.rs#L136) it of our new block,
+using
 [`switch_to_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
-so that we can start
-inserting instructions into it.
+so that we can start inserting instructions into it.
 
 The one major concept about blocks is that the `FunctionBuilder` wants to know when
 all branches which could branch to a block have been seen, at which point it can
 *seal* the block, which allows it to perform SSA construction. All blocks must be
 sealed by the end of the function. We
-[seal](./src/jit.rs#L144)
+[seal](./src/jit.rs#L141)
 a block with
 [`seal_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
 
 Next, our toy language doesn't have explicit variable declarations, so we walk the
 AST to discover all the variables, so that we can
-[declare](./src/jit.rs#L149)
+[declare](./src/jit.rs#L146)
 then to the `FunctionBuilder`. These variables need not be in SSA form; the
 `FunctionBuilder` will take care of constructing SSA form internally.
 
 For convenience when walking the function body, the demo here
-[uses](./src/jit.rs#L154)
+[uses](./src/jit.rs#L176)
  a `FunctionTranslator` object, which holds the `FunctionBuilder`, the current
 `Module`, as well as the symbol table for looking up variables. Now we can start
-[walking the function body](./src/jit.rs#L161).
+[walking the function body](./src/jit.rs#L156).
 
-[AST translation](./src/jit.rs#L189)
-utilizes the instruction-building features of `FunctionBuilder`. Let's start with
-a simple example translating integer literals:
+[AST translation](./src/jit.rs#L186) utilizes the instruction-building features
+of `FunctionBuilder`. Let's start with a simple example translating integer
+literals:
 
 ```rust
     Expr::Literal(literal) => {
@@ -232,23 +212,22 @@ a simple example translating integer literals:
     }
 ```
 
-The first part is just extracting the integer value from the AST. The next
-line is the builder line:
+The first part is just extracting the integer value from the AST. The next line
+is the builder line:
 
  - The `.ins()` returns an "insertion object", which allows inserting an
    instruction at the end of the currently active block.
- - `iconst` is the name of the builder routine for creating
-   [integer constants](https://cranelift.readthedocs.io/en/latest/langref.html#inst-iconst)
-   in Cranelift. Every instruction in the IR can be created directly through such
-   a function call.
+ - `iconst` is the name of the builder routine for creating [integer
+   constants](https://docs.rs/cranelift-codegen/0.66.0/cranelift_codegen/ir/trait.InstBuilder.html#method.iconst)
+   in Cranelift. Every instruction in the IR can be created directly through
+   such a function call.
 
-Translation of
-[Add nodes](./src/jit.rs#L199)
-and other arithmetic operations is similarly straightforward.
+Translation of [Add nodes](./src/jit.rs#L193) and other arithmetic operations is
+similarly straightforward.
 
-Translation of
-[variable references](./src/jit.rs#L275)
-is mostly handled by `FunctionBuilder`'s `use_var` function:
+Translation of [variable references](./src/jit.rs#L230) is mostly handled by
+`FunctionBuilder`'s `use_var` function:
+
 ```rust
     Expr::Identifier(name) => {
         // `use_var` is used to read the value of a variable.
@@ -261,8 +240,9 @@ is mostly handled by `FunctionBuilder`'s `use_var` function:
 
 Its companion is `def_var`, which is used to write the value of a (non-SSA)
 variable, which we use to implement assignment:
+
 ```rust
-    Expr::Assign(name, expr) => {
+    fn translate_assign(&mut self, name: String, expr: Expr) -> Value {
         // `def_var` is used to write the value of a variable. Note that
         // variables can have multiple definitions. Cranelift will
         // convert them into SSA form for itself automatically.
@@ -273,19 +253,17 @@ variable, which we use to implement assignment:
     }
 ```
 
-Next, let's dive into
-[if-else](./src/jit.rs#L291)
-expressions. In order to demonstrate explicit SSA construction, this demo gives
-if-else expressions return values. The way this looks in Cranelift is that
-the true and false arms of the if-else both have branches to a common merge point,
-and they each pass their "return value" as a block parameter to the merge point.
+Next, let's dive into [if-else](./src/jit.rs#L231) expressions. In order to
+demonstrate explicit SSA construction, this demo gives if-else expressions
+return values. The way this looks in Cranelift is that the true and false arms
+of the if-else both have branches to a common merge point, and they each pass
+their "return value" as a block parameter to the merge point.
 
 Note that we seal the blocks we create once we know we'll have no more predecessors,
 which is something that a typical AST makes it easy to know.
 
 Putting it all together, here's the Cranelift IR for the function named
-[foo](./src/toy.rs#L15)
-in the demo program, which contains multiple ifs:
+[foo](./src/toy.rs#L63) in the demo program, which contains multiple ifs:
 
 ```
 function u0:0(i64, i64) -> i64 system_v {
@@ -324,10 +302,9 @@ block3(v3: i64):
 }
 ```
 
-The [while loop](./src/jit.rs#L338)
-translation is also straightforward.
+The [while loop](./src/jit.rs#L314) translation is also straightforward.
 
-Here's the Cranelift IR for the function named [iterative_fib](./src/toy.rs#L81)
+Here's the Cranelift IR for the function named [iterative_fib](./src/toy.rs#L94)
 in the demo program, which contains a while loop:
 
 ```
@@ -375,15 +352,13 @@ block3(v5: i64, v23: i64):
 }
 ```
 
-For
-[calls](./src/jit.rs#L365),
-the basic steps are to determine the call signature, declare the function to be
-called, put the values to be passed in an array, and then call the `call` function.
+For [calls](./src/jit.rs#L345), the basic steps are to determine the call
+signature, declare the function to be called, put the values to be passed in an
+array, and then call the `call` function.
 
-The translation for
-[global data symbols](./src/jit.rs#L393),
-is similar; first declare the symbol to the module, then declare it to the current
-function, and then use the `symbol_value` instruction to produce the value.
+The translation for [global data symbols](./src/jit.rs#L373), is similar; first
+declare the symbol to the module, then declare it to the current function, and
+then use the `symbol_value` instruction to produce the value.
 
 And with that, we can return to our main `toy.rs` file and run some more examples.
 There are examples of recursive and iterative fibonacci, which demonstrate more use
@@ -391,17 +366,15 @@ of calls and control flow.
 
 And there's a hello world example which demonstrates several other features.
 
-This program needs to allocate some
-[data](./src/toy.rs#L120)
-to hold the string data. Inside jit.rs,
-[`create_data`](./src/jit.rs#L90)
-we initialize a `DataContext` with the contents of the hello string, and also
-declare a data object. Then we use the `DataContext` object to define the object.
-At that point, we're done with the `DataContext` object and can clear it. We
-then call `finalize_data` to perform linking (although our simple hello string
-doesn't make any references so there isn't anything to do) and to obtain the
-final runtime address of the data, which we then convert back into a Rust slice
-for convenience.
+This program needs to allocate some [data](./src/toy.rs#L35) to hold the string
+data. Inside jit.rs, [`create_data`](./src/jit.rs#L85) we initialize a
+`DataContext` with the contents of the hello string, and also declare a data
+object. Then we use the `DataContext` object to define the object.  At that
+point, we're done with the `DataContext` object and can clear it. We then call
+`finalize_data` to perform linking (although our simple hello string doesn't
+make any references so there isn't anything to do) and to obtain the final
+runtime address of the data, which we then convert back into a Rust slice for
+convenience.
 
 And to show off a handy feature of the simplejit backend, it can look up symbols
 with `libc::dlsym`, so you can call libc functions such as `puts` (being careful
@@ -423,14 +396,14 @@ including printing "hello world!".
 Another branch [here](https://github.com/bytecodealliance/simplejit-demo/tree/faerie-macho)
 shows how to write Mach-O object files.
 
-Object files are written using the
-[faerie](https://github.com/m4b/faerie) library.
+Object files are written using the [faerie](https://github.com/m4b/faerie)
+library.
 
 ### Have fun!
 
 Cranelift is still evolving, so if there are things here which are confusing or
-awkward, please let us know, via
-[github issues](https://github.com/bytecodealliance/cranelift/issues) or
-just stop by the [gitter chat](https://gitter.im/CraneStation/Lobby/~chat).
+awkward, please let us know, via [github
+issues](https://github.com/bytecodealliance/wasmtime/issues?q=is%3Aissue+is%3Aopen+label%3Acranelift)
+or just stop by the [gitter chat](https://gitter.im/CraneStation/Lobby/~chat).
 Very few things in Cranelift's design are set in stone at this time, and we're
 really interested to hear from people about what makes sense what doesn't.
