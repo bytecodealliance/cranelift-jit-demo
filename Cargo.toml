@@ -3,7 +3,7 @@ name = "simplejit-demo"
 version = "0.0.0"
 authors = ["The Cranelift Project Developers"]
 license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://github.com/CraneStation/simplejit-demo"
+repository = "https://github.com/bytecodealliance/simplejit-demo"
 description = "Toy language implemented using cranelift-simplejit"
 edition = "2018"
 
