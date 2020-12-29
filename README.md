@@ -2,8 +2,8 @@ Hello!
 
 This is a simple demo that JIT-compiles a toy language, using Cranelift.
 
-It uses the new SimpleJIT interface in development
-[here](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/jit). SimpleJIT takes care
+It uses the new JIT interface in development
+[here](https://github.com/bytecodealliance/wasmtime/tree/main/cranelift/jit). JIT takes care
 of managing a symbol table, allocating memory, and performing relocations, offering
 a relatively simple API.
 
@@ -17,17 +17,17 @@ and it makes efficient use of memory.
 
 And Cranelift is being architected to allow flexibility in how one uses it.
 Sometimes that flexibility can be a burden, which we've recently started to
-address in a new set of crates, `cranelift-module`, `cranelift-simplejit`, and
+address in a new set of crates, `cranelift-module`, `cranelift-jit`, and
 `cranelift-faerie`, which put the pieces together in some easy-to-use
 configurations for working with multiple functions at once. `cranelift-module`
 is a common interface for working with multiple functions and data interfaces
-at once. This interface can sit on top of `cranelift-simplejit`, which writes
+at once. This interface can sit on top of `cranelift-jit`, which writes
 code and data to memory where they can be executed and accessed. And, it can
 sit on top of `cranelift-faerie`, which writes code and data to native .o files
 which can be linked into native executables.
 
-This post introduces Cranelift by walking through a simple JIT demo, using
-the [`cranelift-simplejit`](https://crates.io/crates/cranelift-simplejit) crate.
+This post introduces Cranelift by walking through a JIT demo, using
+the [`cranelift-jit`](https://crates.io/crates/cranelift-jit) crate.
 Currently this demo works on Linux x86-64 platforms. It may also work on Mac
 x86-64 platforms, though I haven't specifically tested that yet. And Cranelift
 is being designed to support many other kinds of platforms in the future.
@@ -376,7 +376,7 @@ make any references so there isn't anything to do) and to obtain the final
 runtime address of the data, which we then convert back into a Rust slice for
 convenience.
 
-And to show off a handy feature of the simplejit backend, it can look up symbols
+And to show off a handy feature of the jit backend, it can look up symbols
 with `libc::dlsym`, so you can call libc functions such as `puts` (being careful
 to NUL-terminate your strings!). Unfortunately, `printf` requires varargs, which
 Cranelift does not yet support.
