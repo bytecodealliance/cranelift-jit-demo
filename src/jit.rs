@@ -1,7 +1,7 @@
 use crate::frontend::*;
 use cranelift::prelude::*;
 use cranelift_module::{DataContext, Linkage, Module};
-use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
+use cranelift_jit::{JITBuilder, JITModule};
 use std::collections::HashMap;
 use std::slice;
 
@@ -19,15 +19,15 @@ pub struct JIT {
     /// The data context, which is to data objects what `ctx` is to functions.
     data_ctx: DataContext,
 
-    /// The module, with the simplejit backend, which manages the JIT'd
+    /// The module, with the jit backend, which manages the JIT'd
     /// functions.
-    module: SimpleJITModule,
+    module: JITModule,
 }
 
 impl Default for JIT {
     fn default() -> Self {
-        let builder = SimpleJITBuilder::new(cranelift_module::default_libcall_names());
-        let module = SimpleJITModule::new(builder);
+        let builder = JITBuilder::new(cranelift_module::default_libcall_names());
+        let module = JITModule::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
@@ -47,7 +47,7 @@ impl JIT {
         // Then, translate the AST nodes into Cranelift IR.
         self.translate(params, the_return, stmts)?;
 
-        // Next, declare the function to simplejit. Functions must be declared
+        // Next, declare the function to jit. Functions must be declared
         // before they can be called, or defined.
         //
         // TODO: This may be an area where the API should be streamlined; should
@@ -58,11 +58,11 @@ impl JIT {
             .declare_function(&name, Linkage::Export, &self.ctx.func.signature)
             .map_err(|e| e.to_string())?;
 
-        // Define the function to simplejit. This finishes compilation, although
-        // there may be outstanding relocations to perform. Currently, simplejit
+        // Define the function to jit. This finishes compilation, although
+        // there may be outstanding relocations to perform. Currently, jit
         // cannot finish relocations until all functions to be called are
-        // defined. For this toy demo for now, we'll just finalize the function
-        // below.
+        // defined. For this toy demo for now, we'll just finalize the
+        // function below.
         self.module
             .define_function(id, &mut self.ctx, &mut codegen::binemit::NullTrapSink {})
             .map_err(|e| e.to_string())?;
@@ -177,7 +177,7 @@ struct FunctionTranslator<'a> {
     int: types::Type,
     builder: FunctionBuilder<'a>,
     variables: HashMap<String, Variable>,
-    module: &'a mut SimpleJITModule,
+    module: &'a mut JITModule,
 }
 
 impl<'a> FunctionTranslator<'a> {
