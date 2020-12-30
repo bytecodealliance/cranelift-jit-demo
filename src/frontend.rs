@@ -53,7 +53,7 @@ peg::parser!(pub grammar parser() for str {
         loop_body:statements() _ "}"
         { Expr::WhileLoop(Box::new(e), loop_body) }
 
-    rule assignment() -> Expr 
+    rule assignment() -> Expr
         = i:identifier() _ "=" _ e:expression() {Expr::Assign(i, Box::new(e))}
 
     rule binary_op() -> Expr = precedence!{

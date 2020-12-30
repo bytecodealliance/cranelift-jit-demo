@@ -1,7 +1,7 @@
 use crate::frontend::*;
 use cranelift::prelude::*;
-use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_jit::{JITBuilder, JITModule};
+use cranelift_module::{DataContext, Linkage, Module};
 use std::collections::HashMap;
 use std::slice;
 
