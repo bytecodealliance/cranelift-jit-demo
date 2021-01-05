@@ -1,9 +1,9 @@
 [package]
-name = "simplejit-demo"
+name = "cranelift-jit-demo"
 version = "0.0.0"
 authors = ["The Cranelift Project Developers"]
 license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://github.com/bytecodealliance/simplejit-demo"
+repository = "https://github.com/bytecodealliance/cranelift-jit-demo"
 description = "Toy language implemented using cranelift-jit"
 edition = "2018"
 
