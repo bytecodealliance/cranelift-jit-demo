@@ -1,5 +1,5 @@
 use core::mem;
-use simplejit_demo::jit;
+use cranelift_jit_demo::jit;
 
 fn main() -> Result<(), String> {
     // Create the JIT instance, which manages all generated functions and data.
