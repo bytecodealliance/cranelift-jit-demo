@@ -8,7 +8,7 @@ description = "Toy language implemented using cranelift-jit"
 edition = "2018"
 
 [dependencies]
-cranelift = "0.69.0"
-cranelift-module = "0.69.0"
-cranelift-jit = "0.69.0"
-peg = "0.6"
+cranelift = "0.73.0"
+cranelift-module = "0.73.0"
+cranelift-jit = "0.73.0"
+peg = "0.7.0"

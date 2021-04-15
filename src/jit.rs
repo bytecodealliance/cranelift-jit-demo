@@ -64,7 +64,12 @@ impl JIT {
         // defined. For this toy demo for now, we'll just finalize the
         // function below.
         self.module
-            .define_function(id, &mut self.ctx, &mut codegen::binemit::NullTrapSink {})
+            .define_function(
+                id,
+                &mut self.ctx,
+                &mut codegen::binemit::NullTrapSink {},
+                &mut codegen::binemit::NullStackMapSink {},
+            )
             .map_err(|e| e.to_string())?;
 
         // Now that compilation is finished, we can clear out the context state.
