@@ -26,7 +26,13 @@ pub struct JIT {
 
 impl Default for JIT {
     fn default() -> Self {
-        let builder = JITBuilder::new(cranelift_module::default_libcall_names());
+        let mut builder = JITBuilder::new(cranelift_module::default_libcall_names());
+
+        // Register our print function with the JIT so that it can be
+        // called from code.
+        let print_addr = print_internal as *const u8;
+        builder.symbol("print", print_addr);
+
         let module = JITModule::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
@@ -457,4 +463,11 @@ fn declare_variable(
         *index += 1;
     }
     var
+}
+
+// Prints a value used by the compiled code. Our JIT exposes this
+// function to compiled code with the name "print".
+fn print_internal(value: isize) -> isize {
+    println!("{}", value);
+    0
 }
