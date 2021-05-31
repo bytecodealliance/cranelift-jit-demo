@@ -467,7 +467,7 @@ fn declare_variable(
 
 // Prints a value used by the compiled code. Our JIT exposes this
 // function to compiled code with the name "print".
-fn print_internal(value: isize) -> isize {
+extern "C" fn print_internal(value: isize) -> isize {
     println!("{}", value);
     0
 }
