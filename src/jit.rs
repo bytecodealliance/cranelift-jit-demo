@@ -42,7 +42,7 @@ impl JIT {
     pub fn compile(&mut self, input: &str) -> Result<*const u8, String> {
         // First, parse the string, producing AST nodes.
         let (name, params, the_return, stmts) =
-            parser::function(&input).map_err(|e| e.to_string())?;
+            parser::function(input).map_err(|e| e.to_string())?;
 
         // Then, translate the AST nodes into Cranelift IR.
         self.translate(params, the_return, stmts)?;
@@ -64,7 +64,12 @@ impl JIT {
         // defined. For this toy demo for now, we'll just finalize the
         // function below.
         self.module
-            .define_function(id, &mut self.ctx, &mut codegen::binemit::NullTrapSink {})
+            .define_function(
+                id,
+                &mut self.ctx,
+                &mut codegen::binemit::NullTrapSink {},
+                &mut codegen::binemit::NullStackMapSink {},
+            )
             .map_err(|e| e.to_string())?;
 
         // Now that compilation is finished, we can clear out the context state.
@@ -427,15 +432,15 @@ fn declare_variables_in_stmt(
         }
         Expr::IfElse(ref _condition, ref then_body, ref else_body) => {
             for stmt in then_body {
-                declare_variables_in_stmt(int, builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, stmt);
             }
             for stmt in else_body {
-                declare_variables_in_stmt(int, builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, stmt);
             }
         }
         Expr::WhileLoop(ref _condition, ref loop_body) => {
             for stmt in loop_body {
-                declare_variables_in_stmt(int, builder, variables, index, &stmt);
+                declare_variables_in_stmt(int, builder, variables, index, stmt);
             }
         }
         _ => (),
