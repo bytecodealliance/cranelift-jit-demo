@@ -12,7 +12,7 @@ This is inspired in part by Ulysse Carion's
 and Jonathan Turner's [rustyjit](https://github.com/jonathandturner/rustyjit).
 
 A quick introduction to Cranelift: Cranelift is a compiler backend. It's
-light-weight, supports `no_std` mode, doesn't use of floating-point itself,
+light-weight, supports `no_std` mode, doesn't use floating-point itself,
 and it makes efficient use of memory.
 
 And Cranelift is being architected to allow flexibility in how one uses it.
