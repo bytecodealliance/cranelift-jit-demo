@@ -13,6 +13,8 @@ fn main() -> Result<(), String> {
         "iterative_fib(10) = {}",
         run_iterative_fib_code(&mut jit, 10)?
     );
+    println!("counting down from 5:");
+    run_countdown_code(&mut jit, 5)?;
     run_hello(&mut jit)?;
     Ok(())
 }
@@ -23,6 +25,10 @@ fn run_foo(jit: &mut jit::JIT) -> Result<isize, String> {
 
 fn run_recursive_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
     unsafe { run_code(jit, RECURSIVE_FIB_CODE, input) }
+}
+
+fn run_countdown_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
+    unsafe { run_code(jit, COUNTDOWN_CODE, input) }
 }
 
 fn run_iterative_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, String> {
@@ -85,6 +91,18 @@ const RECURSIVE_FIB_CODE: &str = r#"
                 } else {
                     recursive_fib(n - 1) + recursive_fib(n - 2)
                 }
+            }
+    }
+"#;
+
+/// Another example: calling our builtin print functon.
+const COUNTDOWN_CODE: &str = r#"
+    fn countdown(n) -> (r) {
+        r = if n == 0 {
+                    0
+            } else {
+                print(n)
+                countdown(n - 1)
             }
     }
 "#;
