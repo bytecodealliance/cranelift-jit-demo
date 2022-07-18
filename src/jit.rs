@@ -27,7 +27,7 @@ pub struct JIT {
 impl Default for JIT {
     fn default() -> Self {
         let builder = JITBuilder::new(cranelift_module::default_libcall_names());
-        let module = JITModule::new(builder);
+        let module = JITModule::new(builder.unwrap());
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
@@ -66,10 +66,7 @@ impl JIT {
         self.module
             .define_function(
                 id,
-                &mut self.ctx,
-                &mut codegen::binemit::NullTrapSink {},
-                &mut codegen::binemit::NullStackMapSink {},
-            )
+                &mut self.ctx)
             .map_err(|e| e.to_string())?;
 
         // Now that compilation is finished, we can clear out the context state.
