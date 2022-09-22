@@ -9,7 +9,7 @@ a relatively simple API.
 
 This is inspired in part by Ulysse Carion's
 [llvm-rust-getting-started](https://github.com/ucarion/llvm-rust-getting-started)
-and Jonathan Turner's [rustyjit](https://github.com/jonathandturner/rustyjit).
+and JT's [rustyjit](https://github.com/jntrnr/rustyjit).
 
 A quick introduction to Cranelift: Cranelift is a compiler backend. It's
 light-weight, supports `no_std` mode, doesn't use floating-point itself,
