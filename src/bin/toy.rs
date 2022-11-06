@@ -13,6 +13,7 @@ fn main() -> Result<(), String> {
         "iterative_fib(10) = {}",
         run_iterative_fib_code(&mut jit, 10)?
     );
+    run_call_builtin_symbol(&mut jit)?;
     run_hello(&mut jit)?;
     Ok(())
 }
@@ -29,10 +30,19 @@ fn run_iterative_fib_code(jit: &mut jit::JIT, input: isize) -> Result<isize, Str
     unsafe { run_code(jit, ITERATIVE_FIB_CODE, input) }
 }
 
-fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
-    jit.create_data("hello_string", "hello world!\0".as_bytes().to_vec())?;
-    unsafe { run_code(jit, HELLO_CODE, ()) }
+fn run_call_builtin_symbol(jit: &mut jit::JIT) -> Result<isize, String> {
+    unsafe {
+        jit.create_data("example_string", *b"Example String\0")?;
+        run_code(jit, CALL_BUILTIN_SYMBOL_CODE, ())
+    }
 }
+fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
+    unsafe {
+        jit.create_data("hello_string", *b"hello world!\0")?;
+        run_code(jit, HELLO_CODE, ())
+    }
+}
+
 
 /// Executes the given code using the cranelift JIT compiler.
 ///
@@ -71,6 +81,7 @@ const FOO_CODE: &str = r#"
             50
         }
         c = c + 2
+        assert_int(c, 42)
     }
 "#;
 
@@ -105,7 +116,15 @@ const ITERATIVE_FIB_CODE: &str = r#"
                 n = n - 1
             }
         }
+        assert_int(r, 55)
     }
+"#;
+
+const CALL_BUILTIN_SYMBOL_CODE: &str = r#"
+fn call_builtin_symbol() -> (r) {
+    println_string(&example_string)
+    println_int(10)
+}
 "#;
 
 /// Let's say hello, by calling into libc. The puts function is resolved by
