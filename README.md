@@ -18,12 +18,12 @@ and it makes efficient use of memory.
 And Cranelift is being architected to allow flexibility in how one uses it.
 Sometimes that flexibility can be a burden, which we've recently started to
 address in a new set of crates, `cranelift-module`, `cranelift-jit`, and
-`cranelift-faerie`, which put the pieces together in some easy-to-use
+`cranelift-object`, which put the pieces together in some easy-to-use
 configurations for working with multiple functions at once. `cranelift-module`
 is a common interface for working with multiple functions and data interfaces
 at once. This interface can sit on top of `cranelift-jit`, which writes
 code and data to memory where they can be executed and accessed. And, it can
-sit on top of `cranelift-faerie`, which writes code and data to native .o files
+sit on top of `cranelift-object`, which writes code and data to native .o files
 which can be linked into native executables.
 
 This post introduces Cranelift by walking through a JIT demo, using
