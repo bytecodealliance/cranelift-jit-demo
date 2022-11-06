@@ -3,7 +3,7 @@ use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module};
 use std::collections::HashMap;
-use std::slice;
+use crate::builtins::{assert_int, println_int, println_string};
 
 /// The basic JIT class.
 pub struct JIT {
@@ -26,8 +26,11 @@ pub struct JIT {
 
 impl Default for JIT {
     fn default() -> Self {
-        let builder = JITBuilder::new(cranelift_module::default_libcall_names());
-        let module = JITModule::new(builder.unwrap());
+        let mut builder = JITBuilder::new(cranelift_module::default_libcall_names()).unwrap();
+        builder.symbol("println_string", println_string as *const u8);
+        builder.symbol("println_int", println_int as *const u8);
+        builder.symbol("assert_int", assert_int as *const u8);
+        let module = JITModule::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
@@ -84,12 +87,12 @@ impl JIT {
     }
 
     /// Create a zero-initialized data section.
-    pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<&[u8], String> {
+    pub unsafe fn create_data<D>(&mut self, name: &str, data: D) -> Result<(*mut D, usize), String> {
+        // println!("CreateData: Name: {}, Type: {}", name ,std::any::type_name::<D>());
         // The steps here are analogous to `compile`, except that data is much
         // simpler than functions.
-        self.data_ctx.define(contents.into_boxed_slice());
-        let id = self
-            .module
+        self.data_ctx.define_zeroinit(std::mem::size_of::<D>());
+        let id = self.module
             .declare_data(name, Linkage::Export, true, false)
             .map_err(|e| e.to_string())?;
 
@@ -98,9 +101,12 @@ impl JIT {
             .map_err(|e| e.to_string())?;
         self.data_ctx.clear();
         self.module.finalize_definitions();
-        let buffer = self.module.get_finalized_data(id);
-        // TODO: Can we move the unsafe into cranelift?
-        Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
+        let (ptr, size) = self.module.get_finalized_data(id);
+        let ptr = ptr as *const D as *mut D;
+        unsafe {
+            ptr.write(data);
+        }
+        Ok((ptr, size))
     }
 
     // Translate from toy-language AST nodes into Cranelift IR.
@@ -176,7 +182,7 @@ impl JIT {
 /// A collection of state used for translating from toy-language AST nodes
 /// into Cranelift IR.
 struct FunctionTranslator<'a> {
-    int: types::Type,
+    int: Type,
     builder: FunctionBuilder<'a>,
     variables: HashMap<String, Variable>,
     module: &'a mut JITModule,
