@@ -253,7 +253,7 @@ impl<'a> FunctionTranslator<'a> {
         let lhs = self.translate_expr(lhs);
         let rhs = self.translate_expr(rhs);
         let c = self.builder.ins().icmp(cmp, lhs, rhs);
-        self.builder.ins().bint(self.int, c)
+        self.builder.ins().uextend(self.int, c)
     }
 
     fn translate_if_else(
