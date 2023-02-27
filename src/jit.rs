@@ -26,8 +26,18 @@ pub struct JIT {
 
 impl Default for JIT {
     fn default() -> Self {
-        let builder = JITBuilder::new(cranelift_module::default_libcall_names());
-        let module = JITModule::new(builder.unwrap());
+        let mut flag_builder = settings::builder();
+        flag_builder.set("use_colocated_libcalls", "false").unwrap();
+        flag_builder.set("is_pic", "false").unwrap();
+        let isa_builder = cranelift_native::builder().unwrap_or_else(|msg| {
+            panic!("host machine is not supported: {}", msg);
+        });
+        let isa = isa_builder
+            .finish(settings::Flags::new(flag_builder))
+            .unwrap();
+        let builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+
+        let module = JITModule::new(builder);
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
@@ -64,9 +74,7 @@ impl JIT {
         // defined. For this toy demo for now, we'll just finalize the
         // function below.
         self.module
-            .define_function(
-                id,
-                &mut self.ctx)
+            .define_function(id, &mut self.ctx)
             .map_err(|e| e.to_string())?;
 
         // Now that compilation is finished, we can clear out the context state.
@@ -75,7 +83,7 @@ impl JIT {
         // Finalize the functions which we just defined, which resolves any
         // outstanding relocations (patching in addresses, now that they're
         // available).
-        self.module.finalize_definitions();
+        self.module.finalize_definitions().unwrap();
 
         // We can now retrieve a pointer to the machine code.
         let code = self.module.get_finalized_function(id);
@@ -97,7 +105,7 @@ impl JIT {
             .define_data(id, &self.data_ctx)
             .map_err(|e| e.to_string())?;
         self.data_ctx.clear();
-        self.module.finalize_definitions();
+        self.module.finalize_definitions().unwrap();
         let buffer = self.module.get_finalized_data(id);
         // TODO: Can we move the unsafe into cranelift?
         Ok(unsafe { slice::from_raw_parts(buffer.0, buffer.1) })
@@ -252,8 +260,7 @@ impl<'a> FunctionTranslator<'a> {
     fn translate_icmp(&mut self, cmp: IntCC, lhs: Expr, rhs: Expr) -> Value {
         let lhs = self.translate_expr(lhs);
         let rhs = self.translate_expr(rhs);
-        let c = self.builder.ins().icmp(cmp, lhs, rhs);
-        self.builder.ins().bint(self.int, c)
+        self.builder.ins().icmp(cmp, lhs, rhs)
     }
 
     fn translate_if_else(
@@ -276,9 +283,9 @@ impl<'a> FunctionTranslator<'a> {
         self.builder.append_block_param(merge_block, self.int);
 
         // Test the if condition and conditionally branch.
-        self.builder.ins().brz(condition_value, else_block, &[]);
-        // Fall through to then block.
-        self.builder.ins().jump(then_block, &[]);
+        self.builder
+            .ins()
+            .brif(condition_value, then_block, &[], else_block, &[]);
 
         self.builder.switch_to_block(then_block);
         self.builder.seal_block(then_block);
@@ -322,8 +329,9 @@ impl<'a> FunctionTranslator<'a> {
         self.builder.switch_to_block(header_block);
 
         let condition_value = self.translate_expr(condition);
-        self.builder.ins().brz(condition_value, exit_block, &[]);
-        self.builder.ins().jump(body_block, &[]);
+        self.builder
+            .ins()
+            .brif(condition_value, body_block, &[], exit_block, &[]);
 
         self.builder.switch_to_block(body_block);
         self.builder.seal_block(body_block);
@@ -360,9 +368,7 @@ impl<'a> FunctionTranslator<'a> {
             .module
             .declare_function(&name, Linkage::Import, &sig)
             .expect("problem declaring function");
-        let local_callee = self
-            .module
-            .declare_func_in_func(callee, &mut self.builder.func);
+        let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
 
         let mut arg_values = Vec::new();
         for arg in args {
@@ -377,9 +383,7 @@ impl<'a> FunctionTranslator<'a> {
             .module
             .declare_data(&name, Linkage::Export, true, false)
             .expect("problem declaring data object");
-        let local_id = self
-            .module
-            .declare_data_in_func(sym, &mut self.builder.func);
+        let local_id = self.module.declare_data_in_func(sym, self.builder.func);
 
         let pointer = self.module.target_config().pointer_type();
         self.builder.ins().symbol_value(pointer, local_id)
