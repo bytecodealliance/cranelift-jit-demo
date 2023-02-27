@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 peg = "0.6"
-cranelift = "0.85.1"
-cranelift-module = "0.85.1"
-cranelift-jit = "0.85.1"
+cranelift = "0.93.0"
+cranelift-module = "0.93.0"
+cranelift-jit = "0.93.0"
+cranelift-native = "0.93.0"
