@@ -1,7 +1,7 @@
 use crate::frontend::*;
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{DataContext, Linkage, Module};
+use cranelift_module::{DataDescription, Linkage, Module};
 use std::collections::HashMap;
 use std::slice;
 
@@ -17,7 +17,7 @@ pub struct JIT {
     ctx: codegen::Context,
 
     /// The data context, which is to data objects what `ctx` is to functions.
-    data_ctx: DataContext,
+    data_ctx: DataDescription,
 
     /// The module, with the jit backend, which manages the JIT'd
     /// functions.
@@ -41,7 +41,7 @@ impl Default for JIT {
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
-            data_ctx: DataContext::new(),
+            data_ctx: DataDescription::new(),
             module,
         }
     }
