@@ -123,27 +123,27 @@ These concepts are sufficiently general that they're applicable to JITing as
 well as native object files (more discussion below!), and `Module` provides an
 interface which abstracts over both.
 
-Once we've [initialized the JIT data structures](./src/jit.rs#L29), we then use
-our `JIT` to [compile](./src/jit.rs#L42) some functions.
+Once we've [initialized the JIT data structures](./src/jit.rs#L28), we then use
+our `JIT` to [compile](./src/jit.rs#L52) some functions.
 
 The `JIT`'s `compile` function takes a string containing a function in the toy
-language. It [parses](./src/jit.rs#L44) the string into an AST, and then
-[translates](./src/jit.rs#L48) the AST into Cranelift IR.
+language. It [parses](./src/jit.rs#L55) the string into an AST, and then
+[translates](./src/jit.rs#L58) the AST into Cranelift IR.
 
 Our toy language only supports one type, so we start by [declaring that
-type](./src/jit.rs#L133) for convenience.
+type](./src/jit.rs#L123) for convenience.
 
 We then start translating the function by adding [the function
-parameters](./src/jit.rs#L115) and [return types](./src/jit.rs#L121) to the
+parameters](./src/jit.rs#L125) and [return types](./src/jit.rs#L131) to the
 Cranelift function signature.
 
-Then we [create](./src/jit.rs#L124) a
+Then we [create](./src/jit.rs#L134) a
 [FunctionBuilder](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html)
 which is a utility for building up the contents of a Cranelift IR function. As
 we'll see below, `FunctionBuilder` includes functionality for constructing SSA
 form automatically so that users don't have to worry about it.
 
-Next, we [start](./src/jit.rs#L127) an initial basic block (block), which is the
+Next, we [start](./src/jit.rs#L137) an initial basic block (block), which is the
 entry block of the function, and the place where we'll insert some code.
 
  - A basic block is a sequence of IR instructions which have a single entry
@@ -173,10 +173,10 @@ need to worry about them, though one place they do come up is that incoming
 arguments to a function are represented as block parameters to the entry
 block. We must tell Cranelift to add the parameters, using
 [`append_block_params_for_function_params`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.append_block_params_for_function_params)
-like [so](./src/jit.rs#L133).
+like [so](./src/jit.rs#L143).
 
 The `FunctionBuilder` keeps track of a "current" block that new instructions are
-to be inserted into; we next [inform](./src/jit.rs#L136) it of our new block,
+to be inserted into; we next [inform](./src/jit.rs#L146) it of our new block,
 using
 [`switch_to_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.switch_to_block),
 so that we can start inserting instructions into it.
@@ -185,23 +185,23 @@ The one major concept about blocks is that the `FunctionBuilder` wants to know w
 all branches which could branch to a block have been seen, at which point it can
 *seal* the block, which allows it to perform SSA construction. All blocks must be
 sealed by the end of the function. We
-[seal](./src/jit.rs#L141)
+[seal](./src/jit.rs#L151)
 a block with
 [`seal_block`](https://docs.rs/cranelift-frontend/latest/cranelift_frontend/struct.FunctionBuilder.html#method.seal_block).
 
 Next, our toy language doesn't have explicit variable declarations, so we walk the
 AST to discover all the variables, so that we can
-[declare](./src/jit.rs#L146)
-then to the `FunctionBuilder`. These variables need not be in SSA form; the
+[declare](./src/jit.rs#L156)
+them to the `FunctionBuilder`. These variables need not be in SSA form; the
 `FunctionBuilder` will take care of constructing SSA form internally.
 
 For convenience when walking the function body, the demo here
-[uses](./src/jit.rs#L176)
+[uses](./src/jit.rs#L159)
  a `FunctionTranslator` object, which holds the `FunctionBuilder`, the current
 `Module`, as well as the symbol table for looking up variables. Now we can start
-[walking the function body](./src/jit.rs#L156).
+[walking the function body](./src/jit.rs#L166).
 
-[AST translation](./src/jit.rs#L186) utilizes the instruction-building features
+[AST translation](./src/jit.rs#L196) utilizes the instruction-building features
 of `FunctionBuilder`. Let's start with a simple example translating integer
 literals:
 
@@ -218,14 +218,14 @@ is the builder line:
  - The `.ins()` returns an "insertion object", which allows inserting an
    instruction at the end of the currently active block.
  - `iconst` is the name of the builder routine for creating [integer
-   constants](https://docs.rs/cranelift-codegen/0.66.0/cranelift_codegen/ir/trait.InstBuilder.html#method.iconst)
+   constants](https://docs.rs/cranelift-codegen/latest/cranelift_codegen/ir/trait.InstBuilder.html#method.iconst)
    in Cranelift. Every instruction in the IR can be created directly through
    such a function call.
 
-Translation of [Add nodes](./src/jit.rs#L193) and other arithmetic operations is
+Translation of [Add nodes](./src/jit.rs#L203) and other arithmetic operations is
 similarly straightforward.
 
-Translation of [variable references](./src/jit.rs#L230) is mostly handled by
+Translation of [variable references](./src/jit.rs#L235) is mostly handled by
 `FunctionBuilder`'s `use_var` function:
 
 ```rust
@@ -253,7 +253,7 @@ variable, which we use to implement assignment:
     }
 ```
 
-Next, let's dive into [if-else](./src/jit.rs#L231) expressions. In order to
+Next, let's dive into [if-else](./src/jit.rs#L241) expressions. In order to
 demonstrate explicit SSA construction, this demo gives if-else expressions
 return values. The way this looks in Cranelift is that the true and false arms
 of the if-else both have branches to a common merge point, and they each pass
@@ -302,7 +302,7 @@ block3(v3: i64):
 }
 ```
 
-The [while loop](./src/jit.rs#L314) translation is also straightforward.
+The [while loop](./src/jit.rs#L323) translation is also straightforward.
 
 Here's the Cranelift IR for the function named [iterative_fib](./src/toy.rs#L94)
 in the demo program, which contains a while loop:
@@ -352,11 +352,11 @@ block3(v5: i64, v23: i64):
 }
 ```
 
-For [calls](./src/jit.rs#L345), the basic steps are to determine the call
+For [calls](./src/jit.rs#L355), the basic steps are to determine the call
 signature, declare the function to be called, put the values to be passed in an
 array, and then call the `call` function.
 
-The translation for [global data symbols](./src/jit.rs#L373), is similar; first
+The translation for [global data symbols](./src/jit.rs#L381), is similar; first
 declare the symbol to the module, then declare it to the current function, and
 then use the `symbol_value` instruction to produce the value.
 
@@ -366,8 +366,8 @@ of calls and control flow.
 
 And there's a hello world example which demonstrates several other features.
 
-This program needs to allocate some [data](./src/toy.rs#L35) to hold the string
-data. Inside jit.rs, [`create_data`](./src/jit.rs#L85) we initialize a
+This program needs to allocate some [data](./src/toy.rs#L33) to hold the string
+data. Inside jit.rs, [`create_data`](./src/jit.rs#L95) we initialize a
 `DataContext` with the contents of the hello string, and also declare a data
 object. Then we use the `DataContext` object to define the object.  At that
 point, we're done with the `DataContext` object and can clear it. We then call
