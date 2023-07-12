@@ -100,7 +100,7 @@ The `JIT` class is defined [here](./src/jit.rs#L9) and contains several fields:
  - `builder_context` - Cranelift uses this to reuse dynamic allocations between
    compiling multiple functions.
  - `ctx` - This is the main `Context` object for compiling functions.
- - `data_ctx` - Similar to `ctx`, but for "compiling" data sections.
+ - `data_description` - Similar to `ctx`, but for "compiling" data sections.
  - `module` - The `Module` which holds information about all functions and data
    objects defined in the current `JIT`.
 
@@ -368,9 +368,9 @@ And there's a hello world example which demonstrates several other features.
 
 This program needs to allocate some [data](./src/toy.rs#L33) to hold the string
 data. Inside jit.rs, [`create_data`](./src/jit.rs#L95) we initialize a
-`DataContext` with the contents of the hello string, and also declare a data
-object. Then we use the `DataContext` object to define the object.  At that
-point, we're done with the `DataContext` object and can clear it. We then call
+`DataDescription` with the contents of the hello string, and also declare a data
+object. Then we use the `DataDescription` object to define the object.  At that
+point, we're done with the `DataDescription` object and can clear it. We then call
 `finalize_data` to perform linking (although our simple hello string doesn't
 make any references so there isn't anything to do) and to obtain the final
 runtime address of the data, which we then convert back into a Rust slice for

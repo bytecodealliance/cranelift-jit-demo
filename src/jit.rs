@@ -1,7 +1,7 @@
 use crate::frontend::*;
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{DataContext, Linkage, Module};
+use cranelift_module::{DataDescription, Linkage, Module};
 use std::collections::HashMap;
 use std::slice;
 
@@ -16,8 +16,8 @@ pub struct JIT {
     /// context per thread, though this isn't in the simple demo here.
     ctx: codegen::Context,
 
-    /// The data context, which is to data objects what `ctx` is to functions.
-    data_ctx: DataContext,
+    /// The data description, which is to data objects what `ctx` is to functions.
+    data_description: DataDescription,
 
     /// The module, with the jit backend, which manages the JIT'd
     /// functions.
@@ -41,7 +41,7 @@ impl Default for JIT {
         Self {
             builder_context: FunctionBuilderContext::new(),
             ctx: module.make_context(),
-            data_ctx: DataContext::new(),
+            data_description: DataDescription::new(),
             module,
         }
     }
@@ -95,16 +95,16 @@ impl JIT {
     pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<&[u8], String> {
         // The steps here are analogous to `compile`, except that data is much
         // simpler than functions.
-        self.data_ctx.define(contents.into_boxed_slice());
+        self.data_description.define(contents.into_boxed_slice());
         let id = self
             .module
             .declare_data(name, Linkage::Export, true, false)
             .map_err(|e| e.to_string())?;
 
         self.module
-            .define_data(id, &self.data_ctx)
+            .define_data(id, &self.data_description)
             .map_err(|e| e.to_string())?;
-        self.data_ctx.clear();
+        self.data_description.clear();
         self.module.finalize_definitions().unwrap();
         let buffer = self.module.get_finalized_data(id);
         // TODO: Can we move the unsafe into cranelift?
