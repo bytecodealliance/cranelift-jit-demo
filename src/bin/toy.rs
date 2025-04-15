@@ -42,7 +42,7 @@ fn run_hello(jit: &mut jit::JIT) -> Result<isize, String> {
 ///
 /// This function is unsafe since it relies on the caller to provide it with the correct
 /// input and output types. Using incorrect types at this point may corrupt the program's state.
-unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> {
+unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, String> { unsafe {
     // Pass the string to the JIT, and it returns a raw pointer to machine code.
     let code_ptr = jit.compile(code)?;
     // Cast the raw pointer to a typed function pointer. This is unsafe, because
@@ -51,7 +51,7 @@ unsafe fn run_code<I, O>(jit: &mut jit::JIT, code: &str, input: I) -> Result<O, 
     let code_fn = mem::transmute::<_, fn(I) -> O>(code_ptr);
     // And now we can call it!
     Ok(code_fn(input))
-}
+}}
 
 // A small test function.
 //
