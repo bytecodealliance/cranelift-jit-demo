@@ -1,4 +1,5 @@
 use crate::frontend::*;
+use cranelift::codegen::ir::BlockArg;
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataDescription, Linkage, Module};
@@ -295,7 +296,9 @@ impl<'a> FunctionTranslator<'a> {
         }
 
         // Jump to the merge block, passing it the block return value.
-        self.builder.ins().jump(merge_block, &[then_return]);
+        self.builder
+            .ins()
+            .jump(merge_block, &[BlockArg::Value(then_return)]);
 
         self.builder.switch_to_block(else_block);
         self.builder.seal_block(else_block);
@@ -305,7 +308,9 @@ impl<'a> FunctionTranslator<'a> {
         }
 
         // Jump to the merge block, passing it the block return value.
-        self.builder.ins().jump(merge_block, &[else_return]);
+        self.builder
+            .ins()
+            .jump(merge_block, &[BlockArg::Value(else_return)]);
 
         // Switch to the merge block for subsequent statements.
         self.builder.switch_to_block(merge_block);
@@ -399,20 +404,18 @@ fn declare_variables(
     entry_block: Block,
 ) -> HashMap<String, Variable> {
     let mut variables = HashMap::new();
-    let mut index = 0;
-
     for (i, name) in params.iter().enumerate() {
         // TODO: cranelift_frontend should really have an API to make it easy to set
         // up param variables.
         let val = builder.block_params(entry_block)[i];
-        let var = declare_variable(int, builder, &mut variables, &mut index, name);
+        let var = declare_variable(int, builder, &mut variables, name);
         builder.def_var(var, val);
     }
     let zero = builder.ins().iconst(int, 0);
-    let return_variable = declare_variable(int, builder, &mut variables, &mut index, the_return);
+    let return_variable = declare_variable(int, builder, &mut variables, the_return);
     builder.def_var(return_variable, zero);
     for expr in stmts {
-        declare_variables_in_stmt(int, builder, &mut variables, &mut index, expr);
+        declare_variables_in_stmt(int, builder, &mut variables, expr);
     }
 
     variables
@@ -424,24 +427,23 @@ fn declare_variables_in_stmt(
     int: types::Type,
     builder: &mut FunctionBuilder,
     variables: &mut HashMap<String, Variable>,
-    index: &mut usize,
     expr: &Expr,
 ) {
     match *expr {
         Expr::Assign(ref name, _) => {
-            declare_variable(int, builder, variables, index, name);
+            declare_variable(int, builder, variables, name);
         }
         Expr::IfElse(ref _condition, ref then_body, ref else_body) => {
             for stmt in then_body {
-                declare_variables_in_stmt(int, builder, variables, index, stmt);
+                declare_variables_in_stmt(int, builder, variables, stmt);
             }
             for stmt in else_body {
-                declare_variables_in_stmt(int, builder, variables, index, stmt);
+                declare_variables_in_stmt(int, builder, variables, stmt);
             }
         }
         Expr::WhileLoop(ref _condition, ref loop_body) => {
             for stmt in loop_body {
-                declare_variables_in_stmt(int, builder, variables, index, stmt);
+                declare_variables_in_stmt(int, builder, variables, stmt);
             }
         }
         _ => (),
@@ -453,14 +455,7 @@ fn declare_variable(
     int: types::Type,
     builder: &mut FunctionBuilder,
     variables: &mut HashMap<String, Variable>,
-    index: &mut usize,
     name: &str,
 ) -> Variable {
-    let var = Variable::new(*index);
-    if !variables.contains_key(name) {
-        variables.insert(name.into(), var);
-        builder.declare_var(var, int);
-        *index += 1;
-    }
-    var
+   *variables.entry(name.into()).or_insert_with(|| builder.declare_var(int))
 }

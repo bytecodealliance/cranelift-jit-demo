@@ -9,7 +9,7 @@ edition = "2024"
 
 [dependencies]
 peg = "0.8.1"
-cranelift = "0.118.0"
-cranelift-module = "0.118.0"
-cranelift-jit = "0.118.0"
-cranelift-native = "0.118.0"
+cranelift = "0.125.3"
+cranelift-module = "0.125.3"
+cranelift-jit = "0.125.3"
+cranelift-native = "0.125.3"
